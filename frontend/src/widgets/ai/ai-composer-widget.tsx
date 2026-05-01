@@ -73,7 +73,7 @@ import {
   aiToolbarTuneTriggerMetaStyle,
   aiToolbarTuneTriggerStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
-import { localizeAiAgentModeOption } from '@/widgets/ai/ai-widget-copy'
+import { getAiWidgetCopy, localizeAiAgentModeOption } from '@/widgets/ai/ai-widget-copy'
 
 export type AiComposerWidgetProps = {
   toolbarLabel: string
@@ -199,6 +199,7 @@ export function AiComposerWidget({
       ? selectedModeID
       : (availableModes[0]?.value ?? '')
   const localizedModes = availableModes.map((mode) => localizeAiAgentModeOption(mode, locale))
+  const copy = getAiWidgetCopy(locale).composer
   const selectedContextCount = selectedContextWidgetIDs.length
   const hasAttachments = attachments.length > 0
   const hasRecentAttachments = recentAttachments.length > 0
@@ -206,18 +207,18 @@ export function AiComposerWidget({
     .map((widgetID) => contextWidgetOptions.find((option) => option.value === widgetID) ?? null)
     .filter((option): option is AiContextWidgetOption => option != null)
   const contextSummaryPrimary = !isWidgetContextEnabled
-    ? 'Context off'
+    ? copy.contextOff
     : selectedContextCount === 0
-      ? (activeContextWidgetOption?.title ?? 'Context widgets')
+      ? (activeContextWidgetOption?.title ?? copy.contextWidgets)
       : selectedContextCount === 1
-        ? (selectedContextOptions[0]?.title ?? '1 widget')
-        : `${selectedContextCount} widgets`
+        ? (selectedContextOptions[0]?.title ?? copy.widgetCount(1))
+        : copy.widgetCount(selectedContextCount)
   const contextSummarySecondary = !isWidgetContextEnabled
-    ? 'Excluded from request'
+    ? copy.excludedFromRequest
     : selectedContextCount === 0
-      ? (activeContextWidgetOption?.meta ?? 'Use current widget or pick specific widgets')
+      ? (activeContextWidgetOption?.meta ?? copy.useCurrentWidgetHint)
       : selectedContextCount === 1
-        ? (selectedContextOptions[0]?.meta ?? 'Selected for this request')
+        ? (selectedContextOptions[0]?.meta ?? copy.selectedForRequest)
         : `${selectedContextOptions
             .slice(0, 2)
             .map((option) => option.title ?? option.label)
@@ -346,7 +347,7 @@ export function AiComposerWidget({
                     </Box>
                   </ClearBox>
                   <Select
-                    aria-label="AI provider"
+                    aria-label={copy.providerAriaLabel}
                     className="runa-ui-select"
                     disabled={disabled}
                     onChange={(event) => onProviderChange?.(event.currentTarget.value)}
@@ -369,7 +370,7 @@ export function AiComposerWidget({
                     <Cpu {...toolbarIconProps} />
                   </Box>
                   <Select
-                    aria-label="AI model"
+                    aria-label={copy.modelAriaLabel}
                     className="runa-ui-select"
                     disabled={disabled}
                     onChange={(event) => onModelChange?.(event.currentTarget.value)}
@@ -395,19 +396,19 @@ export function AiComposerWidget({
                   <Button
                     aria-controls={isTuneMenuOpen ? tuneMenuId : undefined}
                     aria-expanded={isTuneMenuOpen}
-                    aria-label="Agent tuning"
+                    aria-label={copy.tuneAriaLabel}
                     className="runa-ui-select"
                     disabled={disabled}
                     onClick={handleToggleTuneMenu}
                     runaComponent="ai-composer-tune-trigger"
                     style={aiToolbarTuneTriggerStyle}
-                    title={tuneSummary || 'Tune'}
+                    title={tuneSummary || copy.tuneFallback}
                   >
                     <Box style={aiToolbarContextTriggerLabelClusterStyle}>
                       <Box aria-hidden="true" style={aiToolbarFieldIconStyle}>
                         <SlidersHorizontal {...toolbarIconProps} />
                       </Box>
-                      <Text style={aiToolbarTuneTriggerMetaStyle}>{tuneSummary || 'Tune'}</Text>
+                      <Text style={aiToolbarTuneTriggerMetaStyle}>{tuneSummary || copy.tuneFallback}</Text>
                     </Box>
                     <ChevronDown size={14} strokeWidth={1.8} />
                   </Button>
@@ -419,15 +420,13 @@ export function AiComposerWidget({
                     >
                       <Surface
                         role="dialog"
-                        aria-label="Agent tuning"
+                        aria-label={copy.tuneAriaLabel}
                         runaComponent="ai-composer-tune-menu"
                         style={aiComposerSecondaryMenuStyle}
                       >
                         <Box style={aiComposerSecondaryMenuHeaderStyle}>
-                          <Text style={aiComposerSecondaryMenuTitleStyle}>Agent tuning</Text>
-                          <Text style={aiComposerSecondaryMenuMetaStyle}>
-                            Profile, role, and mode stay available without consuming the whole toolbar row.
-                          </Text>
+                          <Text style={aiComposerSecondaryMenuTitleStyle}>{copy.tuneAriaLabel}</Text>
+                          <Text style={aiComposerSecondaryMenuMetaStyle}>{copy.tuneDescription}</Text>
                         </Box>
                         <Box style={aiComposerSecondaryMenuControlStackStyle}>
                           {availableProfiles.length > 0 ? (
@@ -439,7 +438,7 @@ export function AiComposerWidget({
                                 <Shield {...toolbarIconProps} />
                               </Box>
                               <Select
-                                aria-label="Agent profile"
+                                aria-label={copy.profileAriaLabel}
                                 className="runa-ui-select"
                                 disabled={disabled}
                                 onChange={(event) => onProfileChange?.(event.currentTarget.value)}
@@ -462,7 +461,7 @@ export function AiComposerWidget({
                                 <UserRound {...toolbarIconProps} />
                               </Box>
                               <Select
-                                aria-label="Agent role"
+                                aria-label={copy.roleAriaLabel}
                                 className="runa-ui-select"
                                 disabled={disabled}
                                 onChange={(event) => onRoleChange?.(event.currentTarget.value)}
@@ -485,7 +484,7 @@ export function AiComposerWidget({
                                 <Wrench {...toolbarIconProps} />
                               </Box>
                               <Select
-                                aria-label="Agent mode"
+                                aria-label={copy.modeAriaLabel}
                                 className="runa-ui-select"
                                 disabled={disabled}
                                 onChange={(event) => onModeChange?.(event.currentTarget.value)}
@@ -512,7 +511,7 @@ export function AiComposerWidget({
                 <Button
                   aria-controls={isContextMenuOpen ? contextMenuId : undefined}
                   aria-expanded={isContextMenuOpen}
-                  aria-label="Composer options"
+                  aria-label={copy.composerOptionsAriaLabel}
                   className="runa-ui-select"
                   disabled={disabled}
                   onClick={handleToggleContextMenu}
@@ -540,13 +539,13 @@ export function AiComposerWidget({
         {isWidgetContextEnabled && hasContextStripItems ? (
           <Box runaComponent="ai-composer-context-strip" style={aiComposerContextStripStyle}>
             <Text runaComponent="ai-composer-context-strip-label" style={aiComposerContextStripLabelStyle}>
-              Request context
+              {copy.requestContext}
             </Text>
             <Box runaComponent="ai-composer-context-strip-row" style={aiComposerContextStripRowStyle}>
               {selectedContextOptions.map((option) => (
                 <Button
                   key={option.value}
-                  aria-label={`Remove ${option.title ?? option.label} from request context`}
+                  aria-label={copy.removeContextAriaLabel(option.title ?? option.label)}
                   className="runa-ui-chip runa-ui-button-quiet-danger"
                   onClick={() => handleRemoveContextWidget(option.value)}
                   runaComponent="ai-composer-context-strip-chip"
@@ -563,7 +562,7 @@ export function AiComposerWidget({
                   style={aiComposerContextStripCurrentStyle}
                 >
                   <Text style={aiComposerContextStripValueStyle}>
-                    Current: {activeContextWidgetOption.title ?? activeContextWidgetOption.label}
+                    {copy.currentPrefix} {activeContextWidgetOption.title ?? activeContextWidgetOption.label}
                   </Text>
                 </Box>
               ) : null}
@@ -573,13 +572,13 @@ export function AiComposerWidget({
         {hasAttachments ? (
           <Box runaComponent="ai-composer-attachment-strip" style={aiComposerContextStripStyle}>
             <Text runaComponent="ai-composer-attachment-strip-label" style={aiComposerContextStripLabelStyle}>
-              Attachments
+              {copy.attachments}
             </Text>
             <Box runaComponent="ai-composer-attachment-strip-row" style={aiComposerContextStripRowStyle}>
               {attachments.map((attachment) => (
                 <Button
                   key={attachment.id}
-                  aria-label={`Remove attachment ${attachment.name}`}
+                  aria-label={copy.removeAttachmentAriaLabel(attachment.name)}
                   className="runa-ui-chip runa-ui-button-quiet-danger"
                   disabled={disabled}
                   onClick={() => onRemoveAttachment?.(attachment.id)}
@@ -599,7 +598,7 @@ export function AiComposerWidget({
               runaComponent="ai-composer-recent-attachment-strip-label"
               style={aiComposerContextStripLabelStyle}
             >
-              {isAttachmentLibraryPending ? 'Recent attachments · loading' : 'Recent attachments'}
+              {isAttachmentLibraryPending ? copy.recentAttachmentsLoading : copy.recentAttachments}
             </Text>
             <Box
               runaComponent="ai-composer-recent-attachment-strip-row"
@@ -618,7 +617,7 @@ export function AiComposerWidget({
                   }}
                 >
                   <Button
-                    aria-label={`Reuse attachment ${attachment.name}`}
+                    aria-label={copy.reuseAttachmentAriaLabel(attachment.name)}
                     className="runa-ui-chip"
                     onClick={() => onReuseRecentAttachment?.(attachment)}
                     runaComponent="ai-composer-recent-attachment-reuse"
@@ -632,7 +631,7 @@ export function AiComposerWidget({
                     {attachment.name}
                   </Button>
                   <IconButton
-                    aria-label={`Delete stored attachment ${attachment.name}`}
+                    aria-label={copy.deleteStoredAttachmentAriaLabel(attachment.name)}
                     className="runa-ui-button-quiet-danger"
                     onClick={() => onDeleteStoredAttachment?.(attachment.id)}
                     runaComponent="ai-composer-recent-attachment-delete"
@@ -651,9 +650,7 @@ export function AiComposerWidget({
             style={aiComposerContextRepairNoticeStyle}
           >
             <Text style={aiComposerContextRepairNoticeTextStyle}>
-              {missingContextWidgetCount === 1
-                ? '1 saved widget is no longer available in this workspace.'
-                : `${missingContextWidgetCount} saved widgets are no longer available in this workspace.`}
+              {copy.missingSavedWidgets(missingContextWidgetCount)}
             </Text>
             <Box style={aiComposerContextRepairNoticeActionsStyle}>
               <Button
@@ -662,7 +659,7 @@ export function AiComposerWidget({
                 className="runa-ui-select"
                 style={aiComposerContextQuickActionStyle}
               >
-                Save cleaned context
+                {copy.saveCleanedContext}
               </Button>
             </Box>
           </Box>
@@ -681,7 +678,7 @@ export function AiComposerWidget({
             >
               <Surface
                 role="dialog"
-                aria-label="Context widgets"
+                aria-label={copy.contextWidgetsDialog}
                 runaComponent="ai-composer-context-menu"
                 style={aiComposerContextMenuStyle}
               >
@@ -690,33 +687,31 @@ export function AiComposerWidget({
                     runaComponent="ai-composer-context-menu-title"
                     style={aiComposerContextMenuTitleStyle}
                   >
-                    Request context
+                    {copy.requestContext}
                   </Text>
                   <Text runaComponent="ai-composer-context-menu-meta" style={aiComposerContextMenuMetaStyle}>
                     {selectedContextCount > 0
-                      ? `${selectedContextCount} widget${selectedContextCount === 1 ? '' : 's'} selected`
-                      : 'No widgets selected'}
+                      ? copy.selectedCount(selectedContextCount)
+                      : copy.noWidgetsSelected}
                   </Text>
                 </Box>
                 <Box style={aiComposerContextSummaryListStyle}>
                   <Box style={aiComposerContextSummaryRowStyle}>
-                    <Text style={aiComposerContextSummaryLabelStyle}>Current</Text>
+                    <Text style={aiComposerContextSummaryLabelStyle}>{copy.current}</Text>
                     <Text style={aiComposerContextSummaryValueStyle}>
-                      {activeContextWidgetOption?.title ?? 'No active widget'}
+                      {activeContextWidgetOption?.title ?? copy.noActiveWidget}
                       {activeContextWidgetOption?.meta ? ` · ${activeContextWidgetOption.meta}` : ''}
                     </Text>
                   </Box>
                   <Box style={aiComposerContextSummaryRowStyle}>
-                    <Text style={aiComposerContextSummaryLabelStyle}>Selected</Text>
+                    <Text style={aiComposerContextSummaryLabelStyle}>{copy.selected}</Text>
                     <Text style={aiComposerContextSummaryValueStyle}>{contextSummarySecondary}</Text>
                   </Box>
                 </Box>
                 {missingContextWidgetCount > 0 ? (
                   <Box style={aiComposerContextRepairNoticeStyle}>
                     <Text style={aiComposerContextRepairNoticeTextStyle}>
-                      {missingContextWidgetCount === 1
-                        ? '1 saved widget is no longer available in this workspace.'
-                        : `${missingContextWidgetCount} saved widgets are no longer available in this workspace.`}
+                      {copy.missingSavedWidgets(missingContextWidgetCount)}
                     </Text>
                     <Box style={aiComposerContextRepairNoticeActionsStyle}>
                       <Button
@@ -725,7 +720,7 @@ export function AiComposerWidget({
                         className="runa-ui-select"
                         style={aiComposerContextQuickActionStyle}
                       >
-                        Save cleaned context
+                        {copy.saveCleanedContext}
                       </Button>
                     </Box>
                   </Box>
@@ -737,7 +732,7 @@ export function AiComposerWidget({
                     onClick={() => onContextUseCurrentWidget?.()}
                     style={aiComposerContextQuickActionStyle}
                   >
-                    Use current
+                    {copy.useCurrent}
                   </Button>
                   <Button
                     disabled={disabled || !activeContextWidgetOption}
@@ -745,7 +740,7 @@ export function AiComposerWidget({
                     onClick={() => onContextOnlyUseCurrentWidget?.()}
                     style={aiComposerContextQuickActionStyle}
                   >
-                    Only current
+                    {copy.onlyCurrent}
                   </Button>
                   <Button
                     disabled={disabled || contextWidgetOptions.length === 0 || areAllWidgetsSelected}
@@ -753,7 +748,7 @@ export function AiComposerWidget({
                     onClick={() => onContextUseAllWidgets?.()}
                     style={aiComposerContextQuickActionStyle}
                   >
-                    All widgets
+                    {copy.allWidgets}
                   </Button>
                   <Button
                     disabled={disabled || (!isWidgetContextEnabled && selectedContextCount === 0)}
@@ -761,14 +756,14 @@ export function AiComposerWidget({
                     onClick={() => onContextUseDefault?.()}
                     style={aiComposerContextQuickActionStyle}
                   >
-                    Use default
+                    {copy.useDefault}
                   </Button>
                 </Box>
                 <SwitcherControl
                   checked={isWidgetContextEnabled}
-                  description="Include selected workspace widgets in the AI request context."
+                  description={copy.useWidgetContextDescription}
                   disabled={disabled}
-                  label="Use widget context"
+                  label={copy.useWidgetContextLabel}
                   onChange={(event) => {
                     onWidgetContextEnabledChange?.(event.currentTarget.checked)
                   }}
@@ -779,10 +774,10 @@ export function AiComposerWidget({
                   </Text>
                 ) : null}
                 <SearchableMultiSelect
-                  label="Widgets"
+                  label={copy.widgetsLabel}
                   onChange={onSelectedContextWidgetIDsChange ?? (() => {})}
                   options={contextWidgetOptions}
-                  searchPlaceholder="Search widgets"
+                  searchPlaceholder={copy.searchWidgetsPlaceholder}
                   value={selectedContextWidgetIDs}
                 />
               </Surface>
@@ -818,11 +813,11 @@ export function AiComposerWidget({
               }}
             >
               <List size={12} strokeWidth={2} />
-              {isWidgetContextEnabled ? `${selectedContextCount || 0} ctx` : 'ctx off'}
+              {isWidgetContextEnabled ? copy.contextBadge(selectedContextCount || 0) : copy.contextBadgeOff}
             </Badge>
             {isSubmitting && onCancelSubmit ? (
               <IconButton
-                aria-label="Cancel response"
+                aria-label={copy.cancelResponseAriaLabel}
                 className="runa-ui-button-quiet-danger"
                 onClick={() => {
                   onCancelSubmit()
@@ -834,7 +829,7 @@ export function AiComposerWidget({
               </IconButton>
             ) : (
               <IconButton
-                aria-label="Send prompt"
+                aria-label={copy.sendPromptAriaLabel}
                 className={submitDisabled ? undefined : 'runa-ui-button-primary'}
                 disabled={submitDisabled}
                 onClick={() => {

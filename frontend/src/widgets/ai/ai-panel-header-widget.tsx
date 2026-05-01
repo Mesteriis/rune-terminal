@@ -79,7 +79,7 @@ import {
   aiShellTitleClusterStyle,
   aiShellTitleTextStyle,
 } from '@/widgets/ai/ai-panel-widget.styles'
-import { formatAiChatModeLabel } from '@/widgets/ai/ai-widget-copy'
+import { formatAiChatModeLabel, getAiWidgetCopy } from '@/widgets/ai/ai-widget-copy'
 
 export type AiPanelHeaderWidgetProps = {
   activeProviderRoute?: {
@@ -133,23 +133,25 @@ const conversationActionIconProps = {
   strokeWidth: 1.75,
 }
 
-function formatConversationTitle(conversation: AgentConversationSummary) {
-  return conversation.title.trim() || 'New conversation'
+type AiConversationCopy = ReturnType<typeof getAiWidgetCopy>['conversation']
+type AiRouteCopy = ReturnType<typeof getAiWidgetCopy>['route']
+
+function formatConversationTitle(conversation: AgentConversationSummary, copy: AiConversationCopy) {
+  return conversation.title.trim() || copy.newConversation
 }
 
-function formatConversationCount(conversation: AgentConversationSummary) {
-  const suffix = conversation.message_count === 1 ? '1 msg' : `${conversation.message_count} msgs`
-  return suffix
+function formatConversationCount(conversation: AgentConversationSummary, copy: AiConversationCopy) {
+  return copy.messageCount(conversation.message_count)
 }
 
 function isArchivedConversation(conversation: AgentConversationSummary | null) {
   return Boolean(conversation?.archived_at?.trim())
 }
 
-function formatConversationUpdatedAt(value: string) {
+function formatConversationUpdatedAt(value: string, copy: AiConversationCopy) {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {
-    return 'Unknown activity'
+    return copy.unknownActivity
   }
 
   return new Intl.DateTimeFormat(undefined, {
@@ -160,30 +162,43 @@ function formatConversationUpdatedAt(value: string) {
   }).format(parsed)
 }
 
-function conversationScopeLabel(scope: AgentConversationListScope, count: number) {
-  const suffix = count === 1 ? '1' : String(count)
-
+function conversationScopeLabel(scope: AgentConversationListScope, count: number, copy: AiConversationCopy) {
   switch (scope) {
     case 'recent':
-      return `Open ${suffix}`
+      return copy.recentScopeLabel(count)
     case 'archived':
-      return `Archived ${suffix}`
+      return copy.archivedScopeLabel(count)
     case 'all':
-      return `All ${suffix}`
+      return copy.allScopeLabel(count)
   }
 }
 
-function conversationSectionTitle(scope: AgentConversationListScope, archived: boolean) {
+function conversationScopeAriaLabel(scope: AgentConversationListScope, copy: AiConversationCopy) {
+  switch (scope) {
+    case 'recent':
+      return copy.recentScopeAriaLabel
+    case 'archived':
+      return copy.archivedScopeAriaLabel
+    case 'all':
+      return copy.allScopeAriaLabel
+  }
+}
+
+function conversationSectionTitle(
+  scope: AgentConversationListScope,
+  archived: boolean,
+  copy: AiConversationCopy,
+) {
   if (scope === 'all') {
-    return archived ? 'Archived' : 'Recent'
+    return archived ? copy.archivedSection : copy.recentSection
   }
 
-  return archived ? 'Archived threads' : 'Open threads'
+  return archived ? copy.archivedThreadsSection : copy.openThreadsSection
 }
 
-function buildConversationTitleCounts(conversations: AgentConversationSummary[]) {
+function buildConversationTitleCounts(conversations: AgentConversationSummary[], copy: AiConversationCopy) {
   return conversations.reduce<Map<string, number>>((counts, conversation) => {
-    const title = formatConversationTitle(conversation)
+    const title = formatConversationTitle(conversation, copy)
     counts.set(title, (counts.get(title) ?? 0) + 1)
     return counts
   }, new Map())
@@ -192,23 +207,29 @@ function buildConversationTitleCounts(conversations: AgentConversationSummary[])
 function conversationOptionAriaLabel(
   conversation: AgentConversationSummary,
   titleCounts: Map<string, number>,
+  copy: AiConversationCopy,
 ) {
-  const title = formatConversationTitle(conversation)
+  const title = formatConversationTitle(conversation, copy)
   if ((titleCounts.get(title) ?? 0) <= 1) {
-    return `Open conversation ${title}`
+    return copy.openConversationAriaLabel(title)
   }
 
-  return `Open conversation ${title} · ${formatConversationCount(conversation)} · ${formatConversationUpdatedAt(
-    conversation.archived_at ?? conversation.updated_at,
-  )}`
+  return copy.openConversationDetailAriaLabel(
+    title,
+    formatConversationCount(conversation, copy),
+    formatConversationUpdatedAt(conversation.archived_at ?? conversation.updated_at, copy),
+  )
 }
 
-function formatProviderRouteStateLabel(route: NonNullable<AiPanelHeaderWidgetProps['activeProviderRoute']>) {
+function formatProviderRouteStateLabel(
+  route: NonNullable<AiPanelHeaderWidgetProps['activeProviderRoute']>,
+  copy: AiRouteCopy,
+) {
   if (route.routePrepareState?.trim() === 'prepared' && route.routePrepared) {
-    return 'Prepared'
+    return copy.prepared
   }
   if (route.routeStatusState?.trim() === 'ready' && route.routeReady) {
-    return 'Ready'
+    return copy.ready
   }
   if (route.routePrepareState?.trim()) {
     return route.routePrepareState.trim()
@@ -216,20 +237,23 @@ function formatProviderRouteStateLabel(route: NonNullable<AiPanelHeaderWidgetPro
   if (route.routeStatusState?.trim()) {
     return route.routeStatusState.trim()
   }
-  return 'Unchecked'
+  return copy.unchecked
 }
 
-function formatProviderRouteMeta(route: NonNullable<AiPanelHeaderWidgetProps['activeProviderRoute']>) {
+function formatProviderRouteMeta(
+  route: NonNullable<AiPanelHeaderWidgetProps['activeProviderRoute']>,
+  copy: AiRouteCopy,
+) {
   const segments: string[] = []
   if (route.model?.trim()) {
     segments.push(route.model.trim())
   }
   if (route.lastFirstResponseLatencyMS > 0) {
-    segments.push(`first ${route.lastFirstResponseLatencyMS}ms`)
+    segments.push(copy.firstLatency(route.lastFirstResponseLatencyMS))
   } else if (route.routePrepareLatencyMS > 0) {
-    segments.push(`prepare ${route.routePrepareLatencyMS}ms`)
+    segments.push(copy.prepareLatency(route.routePrepareLatencyMS))
   } else if (route.routeLatencyMS > 0) {
-    segments.push(`probe ${route.routeLatencyMS}ms`)
+    segments.push(copy.probeLatency(route.routeLatencyMS))
   }
   return segments.join(' · ')
 }
@@ -260,6 +284,9 @@ export function AiPanelHeaderWidget({
   providerRouteError = null,
   title,
 }: AiPanelHeaderWidgetProps) {
+  const aiCopy = getAiWidgetCopy(locale)
+  const conversationCopy = aiCopy.conversation
+  const routeCopy = aiCopy.route
   const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
   const [isRenamingConversation, setIsRenamingConversation] = useState(false)
   const [isDeleteConversationConfirmOpen, setIsDeleteConversationConfirmOpen] = useState(false)
@@ -291,18 +318,18 @@ export function AiPanelHeaderWidget({
     [activeConversationOverride, conversations, selectedConversationID],
   )
   const activeConversationTitle = activeConversation
-    ? formatConversationTitle(activeConversation)
-    : 'Loading conversations'
+    ? formatConversationTitle(activeConversation, conversationCopy)
+    : conversationCopy.loadingConversations
   const displayedConversationTitle = optimisticConversationTitle.trim() || activeConversationTitle
   const activeConversationMeta = activeConversation
     ? isArchivedConversation(activeConversation)
-      ? `${formatConversationCount(activeConversation)} · Archived ${formatConversationUpdatedAt(activeConversation.archived_at ?? activeConversation.updated_at)}`
-      : `${formatConversationCount(activeConversation)} · ${formatConversationUpdatedAt(activeConversation.updated_at)}`
-    : 'Recent thread list'
+      ? `${formatConversationCount(activeConversation, conversationCopy)} · ${conversationCopy.archivedAtPrefix} ${formatConversationUpdatedAt(activeConversation.archived_at ?? activeConversation.updated_at, conversationCopy)}`
+      : `${formatConversationCount(activeConversation, conversationCopy)} · ${formatConversationUpdatedAt(activeConversation.updated_at, conversationCopy)}`
+    : conversationCopy.recentThreadList
   const activeConversationBadgeLabel = activeConversation
     ? isArchivedConversation(activeConversation)
-      ? 'Archived'
-      : 'Open'
+      ? conversationCopy.archivedBadge
+      : conversationCopy.openBadge
     : ''
   const canRenameConversation = activeConversation != null && onRenameConversation != null
   const canArchiveConversation =
@@ -321,9 +348,11 @@ export function AiPanelHeaderWidget({
     }
 
     return conversations.filter((conversation) =>
-      formatConversationTitle(conversation).toLowerCase().includes(normalizedConversationSearchQuery),
+      formatConversationTitle(conversation, conversationCopy)
+        .toLowerCase()
+        .includes(normalizedConversationSearchQuery),
     )
-  }, [conversations, isConversationSearchControlled, normalizedConversationSearchQuery])
+  }, [conversationCopy, conversations, isConversationSearchControlled, normalizedConversationSearchQuery])
   const filteredRecentConversations = useMemo(
     () => filteredConversations.filter((conversation) => !isArchivedConversation(conversation)),
     [filteredConversations],
@@ -367,13 +396,15 @@ export function AiPanelHeaderWidget({
     ? orderedConversationOptions.findIndex((conversation) => conversation.id === highlightedConversationID)
     : -1
   const conversationTitleCounts = useMemo(
-    () => buildConversationTitleCounts(orderedConversationOptions),
-    [orderedConversationOptions],
+    () => buildConversationTitleCounts(orderedConversationOptions, conversationCopy),
+    [conversationCopy, orderedConversationOptions],
   )
   const activeProviderRouteStateLabel = activeProviderRoute
-    ? formatProviderRouteStateLabel(activeProviderRoute)
+    ? formatProviderRouteStateLabel(activeProviderRoute, routeCopy)
     : ''
-  const activeProviderRouteMeta = activeProviderRoute ? formatProviderRouteMeta(activeProviderRoute) : ''
+  const activeProviderRouteMeta = activeProviderRoute
+    ? formatProviderRouteMeta(activeProviderRoute, routeCopy)
+    : ''
   const activeProviderRouteMessage =
     activeProviderRoute?.routePrepareMessage?.trim() ||
     activeProviderRoute?.routeStatusMessage?.trim() ||
@@ -399,11 +430,11 @@ export function AiPanelHeaderWidget({
 
     if (
       !activeConversation ||
-      formatConversationTitle(activeConversation) === optimisticConversationTitle.trim()
+      formatConversationTitle(activeConversation, conversationCopy) === optimisticConversationTitle.trim()
     ) {
       setOptimisticConversationTitle('')
     }
-  }, [activeConversation, optimisticConversationTitle])
+  }, [activeConversation, conversationCopy, optimisticConversationTitle])
 
   useEffect(() => {
     if (!isConversationMenuOpen) {
@@ -677,12 +708,12 @@ export function AiPanelHeaderWidget({
             style={aiHeaderConversationGroupStyle}
           >
             <Text runaComponent="ai-panel-header-conversation-label" style={aiHeaderConversationLabelStyle}>
-              Conversation
+              {conversationCopy.conversationLabel}
             </Text>
             <Button
               aria-expanded={isConversationMenuOpen}
               aria-haspopup="dialog"
-              aria-label="Conversation menu"
+              aria-label={conversationCopy.conversationMenuAriaLabel}
               disabled={isConversationBusy}
               onClick={() => setIsConversationMenuOpen((currentValue) => !currentValue)}
               onKeyDown={handleConversationTriggerKeyDown}
@@ -712,7 +743,7 @@ export function AiPanelHeaderWidget({
               >
                 <Surface
                   role="dialog"
-                  aria-label="Conversation navigator"
+                  aria-label={conversationCopy.conversationNavigatorAriaLabel}
                   runaComponent="ai-panel-header-conversation-dropdown"
                   style={aiHeaderConversationDropdownStyle}
                 >
@@ -728,10 +759,14 @@ export function AiPanelHeaderWidget({
                         runaComponent="ai-panel-header-conversation-dropdown-summary"
                         style={aiHeaderConversationMenuSummaryStyle}
                       >
-                        <Text style={aiHeaderConversationSummaryTitleStyle}>Conversations</Text>
+                        <Text style={aiHeaderConversationSummaryTitleStyle}>
+                          {conversationCopy.conversationsTitle}
+                        </Text>
                         <Text style={aiHeaderConversationMenuMetaStyle}>
-                          {conversations.length === 1 ? '1 thread' : `${conversations.length} threads`}
-                          {hasConversationSearchQuery ? ` · ${filteredConversations.length} shown` : ''}
+                          {conversationCopy.threadCount(conversations.length)}
+                          {hasConversationSearchQuery
+                            ? ` · ${conversationCopy.shownCount(filteredConversations.length)}`
+                            : ''}
                         </Text>
                       </Box>
                       <Box
@@ -739,7 +774,7 @@ export function AiPanelHeaderWidget({
                         style={aiHeaderConversationDropdownActionsStyle}
                       >
                         <Button
-                          aria-label="Rename conversation"
+                          aria-label={conversationCopy.renameConversationAriaLabel}
                           disabled={isConversationBusy || !canRenameConversation}
                           onClick={() => {
                             setIsDeleteConversationConfirmOpen(false)
@@ -749,11 +784,13 @@ export function AiPanelHeaderWidget({
                           style={aiHeaderConversationActionStyle}
                         >
                           <Pencil {...conversationActionIconProps} />
-                          Rename
+                          {conversationCopy.rename}
                         </Button>
                         <Button
                           aria-label={
-                            canRestoreConversation ? 'Restore conversation' : 'Archive conversation'
+                            canRestoreConversation
+                              ? conversationCopy.restoreConversationAriaLabel
+                              : conversationCopy.archiveConversationAriaLabel
                           }
                           disabled={
                             isConversationBusy || (!canArchiveConversation && !canRestoreConversation)
@@ -773,10 +810,10 @@ export function AiPanelHeaderWidget({
                           ) : (
                             <Archive {...conversationActionIconProps} />
                           )}
-                          {canRestoreConversation ? 'Restore' : 'Archive'}
+                          {canRestoreConversation ? conversationCopy.restore : conversationCopy.archive}
                         </Button>
                         <Button
-                          aria-label="Delete conversation"
+                          aria-label={conversationCopy.deleteConversationAriaLabel}
                           disabled={isConversationBusy || !canDeleteConversation}
                           onClick={() => {
                             if (!activeConversation) {
@@ -788,10 +825,10 @@ export function AiPanelHeaderWidget({
                           style={aiHeaderConversationActionStyle}
                         >
                           <Trash2 {...conversationActionIconProps} />
-                          Delete
+                          {conversationCopy.delete}
                         </Button>
                         <Button
-                          aria-label="Create conversation"
+                          aria-label={conversationCopy.createConversationAriaLabel}
                           disabled={isConversationBusy || onCreateConversation == null}
                           onClick={() => {
                             setIsConversationMenuOpen(false)
@@ -801,7 +838,7 @@ export function AiPanelHeaderWidget({
                           style={aiHeaderConversationActionStyle}
                         >
                           <Plus {...conversationActionIconProps} />
-                          New
+                          {conversationCopy.new}
                         </Button>
                       </Box>
                     </Box>
@@ -811,7 +848,7 @@ export function AiPanelHeaderWidget({
                     >
                       {activeConversation ? (
                         <Box
-                          aria-label="Active conversation summary"
+                          aria-label={conversationCopy.activeSummaryAriaLabel}
                           runaComponent="ai-panel-header-conversation-current-block"
                           style={aiHeaderConversationCurrentBlockStyle}
                         >
@@ -819,7 +856,9 @@ export function AiPanelHeaderWidget({
                             runaComponent="ai-panel-header-conversation-current-header"
                             style={aiHeaderConversationCurrentHeaderStyle}
                           >
-                            <Text style={aiHeaderConversationMenuSectionTitleStyle}>Active thread</Text>
+                            <Text style={aiHeaderConversationMenuSectionTitleStyle}>
+                              {conversationCopy.activeThread}
+                            </Text>
                             <Text style={aiHeaderConversationCurrentBadgeStyle}>
                               {activeConversationBadgeLabel}
                             </Text>
@@ -846,7 +885,7 @@ export function AiPanelHeaderWidget({
 
                           return (
                             <Button
-                              aria-label={`Show ${scope} conversations`}
+                              aria-label={conversationScopeAriaLabel(scope, conversationCopy)}
                               aria-pressed={conversationScope === scope}
                               key={scope}
                               onClick={() => {
@@ -864,7 +903,7 @@ export function AiPanelHeaderWidget({
                                   : null),
                               }}
                             >
-                              {conversationScopeLabel(scope, count)}
+                              {conversationScopeLabel(scope, count, conversationCopy)}
                             </Button>
                           )
                         })}
@@ -875,7 +914,7 @@ export function AiPanelHeaderWidget({
                             ? `ai-panel-header-conversation-option-${highlightedConversationID}`
                             : undefined
                         }
-                        aria-label="Search conversations"
+                        aria-label={conversationCopy.searchConversationsAriaLabel}
                         aria-controls="ai-panel-header-conversation-listbox"
                         disabled={isConversationBusy || conversations.length === 0}
                         onChange={(event) => {
@@ -887,7 +926,7 @@ export function AiPanelHeaderWidget({
                           setLocalConversationSearchQuery(nextValue)
                         }}
                         onKeyDown={handleConversationSearchKeyDown}
-                        placeholder="Search conversations"
+                        placeholder={conversationCopy.searchConversationsPlaceholder}
                         runaComponent="ai-panel-header-conversation-search-input"
                         style={aiHeaderConversationSearchInputStyle}
                         value={conversationSearchQuery}
@@ -899,37 +938,38 @@ export function AiPanelHeaderWidget({
                       runaComponent="ai-panel-header-conversation-delete-panel"
                       style={aiHeaderConversationRenamePanelStyle}
                     >
-                      <Text style={aiHeaderConversationMenuMetaStyle}>Delete conversation</Text>
+                      <Text style={aiHeaderConversationMenuMetaStyle}>
+                        {conversationCopy.deleteConversationTitle}
+                      </Text>
                       <Text style={aiHeaderConversationSummaryTitleStyle}>
-                        {formatConversationTitle(pendingDeleteConversation)}
+                        {formatConversationTitle(pendingDeleteConversation, conversationCopy)}
                       </Text>
                       <Text style={aiHeaderConversationMenuMetaStyle}>
-                        This removes the thread from the database and switches the panel to the next available
-                        conversation.
+                        {conversationCopy.deleteConversationDescription}
                       </Text>
                       <Box
                         runaComponent="ai-panel-header-conversation-delete-actions"
                         style={aiHeaderConversationRenameActionsStyle}
                       >
                         <Button
-                          aria-label="Cancel delete"
+                          aria-label={conversationCopy.cancelDeleteAriaLabel}
                           disabled={isConversationBusy}
                           onClick={() => setIsDeleteConversationConfirmOpen(false)}
                           runaComponent="ai-panel-header-conversation-delete-cancel"
                           style={aiHeaderConversationActionStyle}
                         >
                           <X {...conversationActionIconProps} />
-                          Cancel
+                          {conversationCopy.cancel}
                         </Button>
                         <Button
-                          aria-label="Confirm delete conversation"
+                          aria-label={conversationCopy.confirmDeleteAriaLabel}
                           disabled={isConversationBusy}
                           onClick={() => void handleDeleteConversation()}
                           runaComponent="ai-panel-header-conversation-delete-confirm"
                           style={aiHeaderConversationActionStyle}
                         >
                           <Trash2 {...conversationActionIconProps} />
-                          Delete
+                          {conversationCopy.delete}
                         </Button>
                       </Box>
                     </Box>
@@ -939,9 +979,11 @@ export function AiPanelHeaderWidget({
                       runaComponent="ai-panel-header-conversation-rename-panel"
                       style={aiHeaderConversationRenamePanelStyle}
                     >
-                      <Text style={aiHeaderConversationMenuMetaStyle}>Rename active conversation</Text>
+                      <Text style={aiHeaderConversationMenuMetaStyle}>
+                        {conversationCopy.renameActiveConversationTitle}
+                      </Text>
                       <Input
-                        aria-label="Conversation title"
+                        aria-label={conversationCopy.conversationTitleAriaLabel}
                         autoFocus
                         disabled={isConversationBusy}
                         onChange={(event) => setRenameDraft(event.currentTarget.value)}
@@ -965,7 +1007,7 @@ export function AiPanelHeaderWidget({
                         style={aiHeaderConversationRenameActionsStyle}
                       >
                         <Button
-                          aria-label="Cancel rename"
+                          aria-label={conversationCopy.cancelRenameAriaLabel}
                           disabled={isConversationBusy}
                           onClick={() => {
                             setIsRenamingConversation(false)
@@ -975,23 +1017,23 @@ export function AiPanelHeaderWidget({
                           style={aiHeaderConversationActionStyle}
                         >
                           <X {...conversationActionIconProps} />
-                          Cancel
+                          {conversationCopy.cancel}
                         </Button>
                         <Button
-                          aria-label="Save conversation title"
+                          aria-label={conversationCopy.saveConversationTitleAriaLabel}
                           disabled={isConversationBusy || renameDraft.trim() === ''}
                           onClick={() => void handleRenameConversation()}
                           runaComponent="ai-panel-header-conversation-rename-save"
                           style={aiHeaderConversationActionStyle}
                         >
                           <Check {...conversationActionIconProps} />
-                          Save
+                          {conversationCopy.save}
                         </Button>
                       </Box>
                     </Box>
                   ) : null}
                   <Box
-                    aria-label="Conversation list"
+                    aria-label={conversationCopy.conversationListAriaLabel}
                     id="ai-panel-header-conversation-listbox"
                     role="listbox"
                     runaComponent="ai-panel-header-conversation-list"
@@ -1002,9 +1044,7 @@ export function AiPanelHeaderWidget({
                         runaComponent="ai-panel-header-conversation-empty-state"
                         style={aiHeaderConversationEmptyStateStyle}
                       >
-                        <Text style={aiHeaderConversationMenuMetaStyle}>
-                          No conversations match this filter.
-                        </Text>
+                        <Text style={aiHeaderConversationMenuMetaStyle}>{conversationCopy.noMatches}</Text>
                       </Box>
                     ) : null}
                     {conversationScope !== 'archived' && filteredRecentConversations.length > 0 ? (
@@ -1013,7 +1053,7 @@ export function AiPanelHeaderWidget({
                         style={aiHeaderConversationMenuSectionStyle}
                       >
                         <Text style={aiHeaderConversationMenuSectionTitleStyle}>
-                          {conversationSectionTitle(conversationScope, false)}
+                          {conversationSectionTitle(conversationScope, false, conversationCopy)}
                         </Text>
                         {filteredRecentConversations.map((conversation) => {
                           const isActive = conversation.id === selectedConversationID
@@ -1031,6 +1071,7 @@ export function AiPanelHeaderWidget({
                                 aria-label={conversationOptionAriaLabel(
                                   conversation,
                                   conversationTitleCounts,
+                                  conversationCopy,
                                 )}
                                 aria-selected={isActive}
                                 disabled={isConversationBusy}
@@ -1061,17 +1102,19 @@ export function AiPanelHeaderWidget({
                               >
                                 <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
                                   <Text style={aiHeaderConversationSummaryTitleStyle}>
-                                    {formatConversationTitle(conversation)}
+                                    {formatConversationTitle(conversation, conversationCopy)}
                                   </Text>
                                   <Text style={aiHeaderConversationMenuMetaStyle}>
-                                    {formatConversationCount(conversation)} ·{' '}
-                                    {formatConversationUpdatedAt(conversation.updated_at)}
+                                    {formatConversationCount(conversation, conversationCopy)} ·{' '}
+                                    {formatConversationUpdatedAt(conversation.updated_at, conversationCopy)}
                                   </Text>
                                 </Box>
                               </Button>
                               <Box style={aiHeaderConversationMenuRowActionsStyle}>
                                 <Button
-                                  aria-label={`Archive conversation ${formatConversationTitle(conversation)}`}
+                                  aria-label={conversationCopy.archiveRowAriaLabel(
+                                    formatConversationTitle(conversation, conversationCopy),
+                                  )}
                                   disabled={isConversationBusy || onArchiveConversation == null}
                                   onMouseDown={(event) => {
                                     event.preventDefault()
@@ -1081,12 +1124,14 @@ export function AiPanelHeaderWidget({
                                   }}
                                   runaComponent={`ai-panel-header-conversation-row-archive-${conversation.id}`}
                                   style={aiHeaderConversationMenuRowActionStyle}
-                                  title="Archive conversation"
+                                  title={conversationCopy.archiveConversationTitle}
                                 >
                                   <Archive {...conversationActionIconProps} />
                                 </Button>
                                 <Button
-                                  aria-label={`Delete conversation ${formatConversationTitle(conversation)}`}
+                                  aria-label={conversationCopy.deleteRowAriaLabel(
+                                    formatConversationTitle(conversation, conversationCopy),
+                                  )}
                                   disabled={isConversationBusy || onDeleteConversation == null}
                                   onMouseDown={(event) => {
                                     event.preventDefault()
@@ -1096,7 +1141,7 @@ export function AiPanelHeaderWidget({
                                   }}
                                   runaComponent={`ai-panel-header-conversation-row-delete-${conversation.id}`}
                                   style={aiHeaderConversationMenuRowActionStyle}
-                                  title="Delete conversation"
+                                  title={conversationCopy.deleteConversationTitle}
                                 >
                                   <Trash2 {...conversationActionIconProps} />
                                 </Button>
@@ -1112,7 +1157,7 @@ export function AiPanelHeaderWidget({
                         style={aiHeaderConversationMenuSectionStyle}
                       >
                         <Text style={aiHeaderConversationMenuSectionTitleStyle}>
-                          {conversationSectionTitle(conversationScope, true)}
+                          {conversationSectionTitle(conversationScope, true, conversationCopy)}
                         </Text>
                         {filteredArchivedConversations.map((conversation) => {
                           const isActive = conversation.id === selectedConversationID
@@ -1130,6 +1175,7 @@ export function AiPanelHeaderWidget({
                                 aria-label={conversationOptionAriaLabel(
                                   conversation,
                                   conversationTitleCounts,
+                                  conversationCopy,
                                 )}
                                 aria-selected={isActive}
                                 disabled={isConversationBusy}
@@ -1160,19 +1206,23 @@ export function AiPanelHeaderWidget({
                               >
                                 <Box style={aiHeaderConversationMenuOptionLeadingStyle}>
                                   <Text style={aiHeaderConversationSummaryTitleStyle}>
-                                    {formatConversationTitle(conversation)}
+                                    {formatConversationTitle(conversation, conversationCopy)}
                                   </Text>
                                   <Text style={aiHeaderConversationMenuMetaStyle}>
-                                    {formatConversationCount(conversation)} · Archived{' '}
+                                    {formatConversationCount(conversation, conversationCopy)} ·{' '}
+                                    {conversationCopy.archivedAtPrefix}{' '}
                                     {formatConversationUpdatedAt(
                                       conversation.archived_at ?? conversation.updated_at,
+                                      conversationCopy,
                                     )}
                                   </Text>
                                 </Box>
                               </Button>
                               <Box style={aiHeaderConversationMenuRowActionsStyle}>
                                 <Button
-                                  aria-label={`Restore conversation ${formatConversationTitle(conversation)}`}
+                                  aria-label={conversationCopy.restoreRowAriaLabel(
+                                    formatConversationTitle(conversation, conversationCopy),
+                                  )}
                                   disabled={isConversationBusy || onRestoreConversation == null}
                                   onMouseDown={(event) => {
                                     event.preventDefault()
@@ -1182,12 +1232,14 @@ export function AiPanelHeaderWidget({
                                   }}
                                   runaComponent={`ai-panel-header-conversation-row-restore-${conversation.id}`}
                                   style={aiHeaderConversationMenuRowActionStyle}
-                                  title="Restore conversation"
+                                  title={conversationCopy.restoreConversationTitle}
                                 >
                                   <RotateCcw {...conversationActionIconProps} />
                                 </Button>
                                 <Button
-                                  aria-label={`Delete conversation ${formatConversationTitle(conversation)}`}
+                                  aria-label={conversationCopy.deleteRowAriaLabel(
+                                    formatConversationTitle(conversation, conversationCopy),
+                                  )}
                                   disabled={isConversationBusy || onDeleteConversation == null}
                                   onMouseDown={(event) => {
                                     event.preventDefault()
@@ -1197,7 +1249,7 @@ export function AiPanelHeaderWidget({
                                   }}
                                   runaComponent={`ai-panel-header-conversation-row-delete-${conversation.id}`}
                                   style={aiHeaderConversationMenuRowActionStyle}
-                                  title="Delete conversation"
+                                  title={conversationCopy.deleteConversationTitle}
                                 >
                                   <Trash2 {...conversationActionIconProps} />
                                 </Button>
@@ -1229,11 +1281,11 @@ export function AiPanelHeaderWidget({
                   style={aiShellRouteMetaStyle}
                   title={activeProviderRouteMessage || activeProviderRouteMeta}
                 >
-                  {activeProviderRouteMessage || activeProviderRouteMeta || 'No route telemetry yet'}
+                  {activeProviderRouteMessage || activeProviderRouteMeta || routeCopy.noTelemetry}
                 </Text>
               </Box>
               <Button
-                aria-label={providerRouteActionLabel?.trim() || 'Route action'}
+                aria-label={providerRouteActionLabel?.trim() || routeCopy.routeActionAriaLabel}
                 disabled={isProviderRouteBusy || onProviderRouteAction == null}
                 onClick={() => {
                   void onProviderRouteAction?.()
@@ -1247,7 +1299,7 @@ export function AiPanelHeaderWidget({
                   <Check aria-hidden="true" size={12} />
                 )}
                 {providerRouteActionLabel?.trim() ||
-                  (activeProviderRoute.routePrepared ? 'Refresh' : 'Prepare')}
+                  (activeProviderRoute.routePrepared ? routeCopy.refresh : routeCopy.prepare)}
               </Button>
             </Box>
           ) : null}

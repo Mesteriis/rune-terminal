@@ -332,9 +332,9 @@ describe('AiComposerWidget', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Agent tuning' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Настройка агента' }))
 
-    const modeSelect = screen.getByRole('combobox', { name: 'Agent mode' })
+    const modeSelect = screen.getByRole('combobox', { name: 'Режим агента' })
     expect(modeSelect).toHaveValue('implement')
     expect(screen.getByRole('option', { name: 'Реализация' })).toHaveValue('implement')
     expect(screen.getByRole('option', { name: 'Ревью' })).toHaveValue('review')

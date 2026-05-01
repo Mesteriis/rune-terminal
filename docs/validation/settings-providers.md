@@ -159,6 +159,7 @@
   - provider combobox
   - model combobox
   - switching provider updates visible model choices to that provider's `chat_models`
+- `AI > Composer` settings now read the shortcut labels, descriptions, and runtime badges from the app locale table for `en`, `ru`, `zh-CN`, and `es`; this is presentation-only and keeps the same runtime-backed composer preference contract.
 - The OpenAI-compatible browser validation in this pass used the live LAN source:
   - `base_url: http://192.168.1.8:8317`
   - verified model discovery from `/v1/models`

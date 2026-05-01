@@ -319,13 +319,14 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
     })
   }, [])
 
-  const providerLabel = agentPanel.activeProviderGateway?.display_name?.trim() || 'No route'
+  const providerLabel = agentPanel.activeProviderGateway?.display_name?.trim() || aiCopy.collapsed.noRoute
   const routeLabel =
     agentPanel.providerGatewayError?.trim() ||
     agentPanel.activeProviderGateway?.route_prepare_state?.trim() ||
     agentPanel.activeProviderGateway?.route_status_state?.trim() ||
-    'Unchecked'
-  const activeConversationTitle = agentPanel.activeConversationSummary?.title?.trim() || 'New conversation'
+    aiCopy.collapsed.unchecked
+  const activeConversationTitle =
+    agentPanel.activeConversationSummary?.title?.trim() || aiCopy.collapsed.newConversation
   const activeConversationCount = agentPanel.activeConversationSummary?.message_count ?? 0
   const conversationCountLabel =
     activeConversationCount > 0 ? `${activeConversationCount} msgs` : aiCopy.collapsed.noMessagesYet
@@ -383,7 +384,7 @@ export function AppAiSidebar({ dockviewApiRef, isOpen, contentAreaRef }: AppAiSi
                     {isAiPanelExpanded ? (
                       <>
                         <Button
-                          aria-label="Collapse AI panel"
+                          aria-label={aiCopy.collapsed.collapseAriaLabel}
                           aria-controls={AI_SHELL_PANEL_DISCLOSURE_REGION_ID}
                           aria-expanded="true"
                           onClick={handleToggleAiPanel}
