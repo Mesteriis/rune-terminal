@@ -16,9 +16,11 @@
   - busy overlay particle colors resolve through token-owned `--runa-busy-particle-*` CSS variables, while marker/overlay chrome is centralized in `widget-busy-overlay-widget.styles.ts`
   - settings error text and remote inline label styles now use shared settings-shell style objects instead of per-section raw fallback colors
   - a focused source contract guards the audited files from reintroducing raw `hex` / `rgb` / `hsl` color literals above the token/style boundary
+  - shell topbar workspace tabs keep transparent backgrounds for inactive and active states, so the active workspace no longer introduces a separate colored substrate
 
 ## Commands/tests used
 
+- `npm --prefix frontend run test -- src/widgets/shell/shell-topbar-widget.test.tsx`
 - `npm --prefix frontend run test -- src/shared/ui/style-theme-contracts.test.ts src/widgets/panel/panel-dom-mount.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --run`
 - `npm --prefix frontend run test -- src/shared/ui/components/dialog-popup.test.tsx src/widgets/settings/settings-shell-widget.test.tsx --run`
 - `npm --prefix frontend run test -- src/shared/ui/components/dialog-popup.test.tsx src/widgets/settings/settings-shell-widget.test.tsx src/widgets/settings/agent-provider-settings-widget.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/settings/plugins-settings-section.test.tsx src/widgets/settings/mcp-settings-section.test.tsx src/widgets/settings/remote-profiles-settings-section.test.tsx src/widgets/shell/right-action-rail-widget.test.tsx --run`
@@ -29,6 +31,7 @@
 - `scripts/check-active-path-api-imports.sh`
 - `git diff --check`
 - In-app browser DOM smoke at `http://127.0.0.1:5173/`: settings modal opens, keeps only `Close Настройки` icon close, removes footer `Close`, visible modal `Настройки`, modal description, sidebar `Разделы`, and settings-shell outer border/background; sidebar style resolves to scrollable overflow; AI provider section still uses `Провайдеры AI`, run diagnostics stay hidden before selecting a saved run, and old visible strings `AI / Провайдеры`, `Prepare route`, `Source is reachable`, `Route prepared via`, and English ` first ` are absent.
+- In-app browser DOM smoke at `http://127.0.0.1:5173/?dropdown-layer-check=1`: active `Workspace-1` tab button resolves to `background: transparent`.
 
 ## Known limitations
 

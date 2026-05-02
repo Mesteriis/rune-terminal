@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { TerminalStatusHeader } from '@/shared/ui/components/terminal-status-header'
@@ -130,6 +130,31 @@ describe('TerminalStatusHeader', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /bash/ }))
 
     expect(onSelectShell).toHaveBeenCalledWith('/bin/bash')
+  })
+
+  it('formats shell menu rows as a shell badge followed by the executable path', () => {
+    render(
+      <TerminalStatusHeader
+        activeShell="/bin/zsh"
+        connectionKind="local"
+        cwd="~/workspace/app"
+        onSelectShell={vi.fn()}
+        sessionState="running"
+        shellLabel="zsh"
+        shellOptions={[
+          { path: '/bin/zsh', name: 'zsh', default: true },
+          { path: '/bin/bash', name: 'bash' },
+        ]}
+        title="Workspace shell"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'zsh' }))
+
+    const zshMenuItem = screen.getByRole('menuitem', { name: '[ zsh ] /bin/zsh' })
+
+    expect(within(zshMenuItem).getByText('[ zsh ]')).toBeInTheDocument()
+    expect(within(zshMenuItem).getByText('/bin/zsh')).toBeInTheDocument()
   })
 
   it('renders the local shell menu on the body overlay layer', () => {

@@ -79,7 +79,7 @@ export const workspaceTabStyle: CSSProperties = {
   padding: '0 6px 0 9px',
   border: '1px solid var(--color-border-subtle)',
   borderRadius: 'var(--radius-sm)',
-  background: 'var(--color-surface-glass-soft)',
+  background: 'transparent',
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
@@ -107,7 +107,7 @@ export const workspaceTabButtonStyle: CSSProperties = {
 
 export const activeWorkspaceTabStyle: CSSProperties = {
   ...workspaceTabStyle,
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 72%, var(--color-accent-emerald-soft) 28%)',
+  background: 'transparent',
   color: 'var(--color-text-primary)',
   border: '1px solid color-mix(in srgb, var(--color-accent-emerald-strong) 50%, var(--color-border-strong))',
   boxShadow: 'none',

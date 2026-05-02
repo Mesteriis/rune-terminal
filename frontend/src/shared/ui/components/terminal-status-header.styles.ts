@@ -179,6 +179,13 @@ export const terminalStatusHeaderShellMenuItemActiveStyle: React.CSSProperties =
   borderColor: 'var(--runa-terminal-surface-border, var(--color-border-subtle))',
 }
 
+export const terminalStatusHeaderShellMenuItemContentStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'baseline',
+  gap: '8px',
+  minWidth: 0,
+}
+
 export const terminalStatusHeaderShellMenuItemNameStyle: React.CSSProperties = {
   fontSize: '0.78rem',
   lineHeight: '1.15',
@@ -189,7 +196,7 @@ export const terminalStatusHeaderShellMenuItemNameStyle: React.CSSProperties = {
 }
 
 export const terminalStatusHeaderShellMenuItemPathStyle: React.CSSProperties = {
-  fontSize: '0.68rem',
+  fontSize: '0.72rem',
   lineHeight: '1.15',
   color: 'var(--runa-terminal-text-muted, var(--color-text-muted))',
   whiteSpace: 'nowrap',

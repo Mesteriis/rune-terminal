@@ -26,6 +26,7 @@ import {
   terminalStatusHeaderRootStyle,
   terminalStatusHeaderSecondaryTextStyle,
   terminalStatusHeaderShellMenuItemActiveStyle,
+  terminalStatusHeaderShellMenuItemContentStyle,
   terminalStatusHeaderShellMenuItemNameStyle,
   terminalStatusHeaderShellMenuItemPathStyle,
   terminalStatusHeaderShellMenuItemStyle,
@@ -310,6 +311,7 @@ export function TerminalStatusHeader({
           <button
             key={shell.path}
             disabled={isShellSwitching}
+            aria-label={`[ ${shell.name} ] ${shell.path}`}
             onClick={handleShellSelect(shell.path)}
             role="menuitem"
             style={{
@@ -328,8 +330,8 @@ export function TerminalStatusHeader({
             ) : (
               <span aria-hidden="true" />
             )}
-            <span style={{ minWidth: 0 }}>
-              <span style={terminalStatusHeaderShellMenuItemNameStyle}>{shell.name}</span>
+            <span style={terminalStatusHeaderShellMenuItemContentStyle}>
+              <span style={terminalStatusHeaderShellMenuItemNameStyle}>[ {shell.name} ]</span>
               <span style={terminalStatusHeaderShellMenuItemPathStyle}>{shell.path}</span>
             </span>
           </button>

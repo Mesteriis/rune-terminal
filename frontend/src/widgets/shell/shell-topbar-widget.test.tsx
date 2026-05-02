@@ -96,11 +96,9 @@ describe('ShellTopbarWidget', () => {
   it('keeps shell chrome colors on token-backed variables', () => {
     expect(topbarStyle.background).toBe('transparent')
     expect(topbarStyle.borderBottom).toBe('none')
-    expect(workspaceTabStyle.background).toBe('var(--color-surface-glass-soft)')
+    expect(workspaceTabStyle.background).toBe('transparent')
     expect(workspaceTabStyle.border).toBe('1px solid var(--color-border-subtle)')
-    expect(activeWorkspaceTabStyle.background).toBe(
-      'color-mix(in srgb, var(--color-surface-glass-soft) 72%, var(--color-accent-emerald-soft) 28%)',
-    )
+    expect(activeWorkspaceTabStyle.background).toBe('transparent')
     expect(activeWorkspaceTabStyle.border).toBe(
       '1px solid color-mix(in srgb, var(--color-accent-emerald-strong) 50%, var(--color-border-strong))',
     )

@@ -43,7 +43,8 @@
     The compact Dockview header shell menu now renders through a body-level
     fixed overlay layer, so the discovered-shell dropdown stays visible above
     terminal content instead of being clipped by Dockview tab/header stacking
-    contexts.
+    contexts. Shell rows render as `[ shell ] path`, keeping the executable
+    name visually distinct from the full path.
   - the terminal body now exposes a reference-like chrome layer on top of the same runtime contract:
     - `TerminalStatusHeader` is rendered inside the panel body and uses live `cwd`, `connection_kind`, `status`, and `shell`
     - the body header now renders that identity as an expanded stacked view (`cwd` primary, terminal title secondary), while the Dockview tab header stays compact; both surfaces therefore read from the same session metadata but at different density levels
@@ -303,6 +304,9 @@
 - in-app browser smoke on `http://127.0.0.1:5173/` confirms the compact
   Dockview header `zsh` shell pill opens a visible shell dropdown above the
   terminal viewport after the body-level overlay fix
+- in-app browser DOM smoke on `http://127.0.0.1:5173/?dropdown-layer-check=1`
+  confirms the opened shell dropdown exposes menu items such as
+  `[ zsh ] /bin/zsh`
 
 ## Known limitations
 
