@@ -2,7 +2,7 @@
 
 ## Last verified state
 
-- Date: `2026-04-30`
+- Date: `2026-05-02`
 - State: `VERIFIED` for runtime/protocol hardening
 - Scope:
   - side-process plugin execution path
@@ -41,8 +41,22 @@
     when persistence fails, so failed lifecycle requests do not drift runtime
     truth away from durable state
   - remote MCP probe handles malformed initialize responses without panicking
+  - deterministic plugin runtime chaos/fault-injection coverage now exercises
+    pre-handshake crashes, malformed handshake/response frames, wrong response
+    request IDs, invalid success/error payload mixing, post-response process
+    errors, teardown timeouts and invocation timeouts while waiting for exit
+  - plugin runtime failure metadata preserves concrete plugin identity across
+    the chaos/fault-injection matrix so tool-runtime normalization can report
+    which plugin failed
 
 ## Commands/tests used
+
+Plugin runtime chaos/fault-injection slice (`2026-05-02`):
+
+- `./scripts/go.sh test ./core/plugins -run TestRuntimeChaosFaultInjectionClassifiesBoundaryFailures -count=1`
+- `./scripts/go.sh test ./core/plugins ./core/toolruntime -count=1`
+- `git diff --check`
+- `git diff --cached --check`
 
 MCP probe hardening slice (`2026-04-30`):
 

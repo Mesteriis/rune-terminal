@@ -1,6 +1,6 @@
 # Plugin Runtime
 
-Date: `2026-04-29`
+Date: `2026-05-02`
 Phase: stability hardening
 
 ## What this document is
@@ -36,6 +36,9 @@ This is the canonical plugin entrypoint for runtime boundary and protocol behavi
   - `protocol_version_mismatch`
   - `capability_not_declared`
   - `capability_not_allowed`
+- Failure metadata preserves the bound plugin name before a valid manifest is
+  available and the manifest `plugin_id` after handshake validation, including
+  post-response process exit, teardown timeout and invocation-timeout failures.
 
 ## Policy and audit boundaries
 

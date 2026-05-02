@@ -102,7 +102,7 @@ func (r *Runtime) Invoke(ctx context.Context, spec PluginSpec, request InvokeReq
 			return InvokeResult{}, outcome.err
 		}
 
-		if err := r.waitForExit(invokeCtx, process, waitCh, r.teardownTimeout(spec)); err != nil {
+		if err := r.waitForExit(invokeCtx, process, waitCh, r.teardownTimeout(spec), outcome.result.Manifest.PluginID); err != nil {
 			return InvokeResult{}, err
 		}
 		return outcome.result, nil
@@ -174,9 +174,9 @@ func (r *Runtime) exchangeProtocol(process Process, spec PluginSpec, request Inv
 		ProtocolVersion: protocolVersion,
 	}); err != nil {
 		return InvokeResult{}, newFailure(
-			FailureCodeHandshakeFailed,
+			FailureCodeCrashed,
 			spec.Name,
-			"failed to write handshake request to plugin",
+			"plugin closed stdin before handshake",
 			fmt.Errorf("%w: failed to write handshake: %v", ErrPluginProcessCrashed, err),
 		)
 	}
@@ -529,6 +529,7 @@ func (r *Runtime) waitForExit(
 	process Process,
 	waitCh <-chan error,
 	teardownTimeout time.Duration,
+	pluginID string,
 ) error {
 	timer := time.NewTimer(teardownTimeout)
 	defer timer.Stop()
@@ -538,7 +539,7 @@ func (r *Runtime) waitForExit(
 		if waitErr != nil {
 			return newFailure(
 				FailureCodeCrashed,
-				"",
+				pluginID,
 				"plugin process exited with error",
 				fmt.Errorf("%w: %v", ErrPluginProcessCrashed, waitErr),
 			)
@@ -548,7 +549,7 @@ func (r *Runtime) waitForExit(
 		r.killAndWait(process, waitCh)
 		return newFailure(
 			FailureCodeCrashed,
-			"",
+			pluginID,
 			"plugin did not exit within teardown timeout",
 			ErrPluginProcessCrashed,
 		)
@@ -556,7 +557,7 @@ func (r *Runtime) waitForExit(
 		r.killAndWait(process, waitCh)
 		return newFailure(
 			FailureCodeTimeout,
-			"",
+			pluginID,
 			"plugin invocation timed out while waiting for process exit",
 			fmt.Errorf("%w: %v", ErrPluginTimeout, invokeCtx.Err()),
 		)
