@@ -277,6 +277,7 @@
   - the in-panel session rail exposes `New session` / focus controls against the active terminal widget
   - creating a sibling session uses the grouped-session backend contract instead of inserting another Dockview panel in the same group
   - in-app browser smoke on `http://localhost:5173/` confirmed clicking the in-panel `New session` control increased visible terminal session focus buttons from 2 to 3 while `.dv-tab` stayed at 1 and `Add terminal tab` stayed absent
+  - this `2026-05-02` boundary pass does not claim a fresh `npm run tauri:dev` desktop smoke; validation was limited to split-browser UI, focused Vitest coverage, TypeScript, and diff checks
 - the terminal Playwright suite now also validates grouped-session runtime behavior:
   - `New session` creates a sibling backend session under the same widget id
   - the compact session rail becomes visible once more than one session exists
