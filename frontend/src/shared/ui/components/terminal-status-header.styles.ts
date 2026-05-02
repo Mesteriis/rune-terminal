@@ -142,14 +142,14 @@ export const terminalStatusHeaderShellTriggerStyle: React.CSSProperties = {
 
 export const terminalStatusHeaderShellMenuStyle: React.CSSProperties = {
   ...resetBoxStyle,
-  position: 'absolute',
-  top: 'calc(100% + 6px)',
-  right: 0,
-  zIndex: 'var(--z-modal-widget)',
+  position: 'fixed',
+  zIndex: 'var(--z-modal-body)',
   display: 'grid',
   gap: '2px',
   minWidth: '190px',
   maxWidth: 'min(360px, 70vw)',
+  maxHeight: 'min(320px, calc(100vh - 16px))',
+  overflowY: 'auto',
   padding: '4px',
   border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',

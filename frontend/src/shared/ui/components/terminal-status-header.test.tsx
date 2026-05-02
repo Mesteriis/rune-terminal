@@ -131,4 +131,30 @@ describe('TerminalStatusHeader', () => {
 
     expect(onSelectShell).toHaveBeenCalledWith('/bin/bash')
   })
+
+  it('renders the local shell menu on the body overlay layer', () => {
+    const { container } = render(
+      <TerminalStatusHeader
+        activeShell="/bin/zsh"
+        connectionKind="local"
+        cwd="~/workspace/app"
+        onSelectShell={vi.fn()}
+        sessionState="running"
+        shellLabel="zsh"
+        shellOptions={[{ path: '/bin/zsh', name: 'zsh', default: true }]}
+        title="Workspace shell"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'zsh' }))
+
+    const shellMenu = screen.getByRole('menu')
+
+    expect(document.body).toContainElement(shellMenu)
+    expect(container).not.toContainElement(shellMenu)
+    expect(shellMenu).toHaveStyle({
+      position: 'fixed',
+      zIndex: 'var(--z-modal-body)',
+    })
+  })
 })

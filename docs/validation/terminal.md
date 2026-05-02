@@ -40,6 +40,10 @@
     and selecting an item restarts the active backend session through
     `POST /api/v1/terminal/{widgetID}/restart` with a validated `shell`
     override instead of launching arbitrary frontend-owned commands.
+    The compact Dockview header shell menu now renders through a body-level
+    fixed overlay layer, so the discovered-shell dropdown stays visible above
+    terminal content instead of being clipped by Dockview tab/header stacking
+    contexts.
   - the terminal body now exposes a reference-like chrome layer on top of the same runtime contract:
     - `TerminalStatusHeader` is rendered inside the panel body and uses live `cwd`, `connection_kind`, `status`, and `shell`
     - the body header now renders that identity as an expanded stacked view (`cwd` primary, terminal title secondary), while the Dockview tab header stays compact; both surfaces therefore read from the same session metadata but at different density levels
@@ -265,6 +269,7 @@
 - `npm --prefix frontend run lint:active`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx -t "renders terminal controls through the active locale copy" --reporter=verbose`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget-copy.test.ts --reporter=verbose`
+- `npm --prefix frontend run test -- src/shared/ui/components/terminal-status-header.test.tsx`
 - `npm run validate:desktop-runtime`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "grouped backend sessions through the session rail"`
 - `npm run test:ui -- --reporter=line e2e/terminal.spec.ts --grep "terminal widget browser filters and closes grouped backend sessions"`
@@ -295,6 +300,9 @@
   - the shell status pill opens the backend-discovered local shell list
   - selecting a discovered shell posts the restart request for the active widget
   - the backend snapshot reports the selected shell after the restart completes
+- in-app browser smoke on `http://127.0.0.1:5173/` confirms the compact
+  Dockview header `zsh` shell pill opens a visible shell dropdown above the
+  terminal viewport after the body-level overlay fix
 
 ## Known limitations
 
@@ -326,6 +334,7 @@
 - `frontend/src/features/terminal/model/use-terminal-session.ts`
 - `frontend/src/features/terminal/model/use-terminal-preferences.ts`
 - `frontend/src/shared/ui/components/terminal-toolbar.tsx`
+- `frontend/src/shared/ui/components/terminal-status-header.tsx`
 - `frontend/src/widgets/terminal/terminal-widget.tsx`
 - `frontend/src/widgets/terminal/terminal-session-navigator-widget.tsx`
 - `frontend/src/shared/ui/components/terminal-surface.tsx`

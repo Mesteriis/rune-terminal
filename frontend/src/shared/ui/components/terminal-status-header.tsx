@@ -1,5 +1,6 @@
 import type * as React from 'react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import {
   Activity,
@@ -67,6 +68,14 @@ export type TerminalStatusHeaderProps = {
   shellOptions?: TerminalStatusShellOption[]
   showMeta?: boolean
 }
+
+type ShellMenuPosition = {
+  right: number
+  top: number
+}
+
+const shellMenuGap = 6
+const shellMenuViewportMargin = 8
 
 function getConnectionMeta(connectionKind: TerminalConnectionKind) {
   return connectionKind === 'ssh' ? { Icon: Server, label: 'SSH' } : { Icon: Laptop2, label: 'Local' }
@@ -168,7 +177,10 @@ export function TerminalStatusHeader({
   const connectionMeta = getConnectionMeta(connectionKind)
   const sessionMeta = getSessionMeta(sessionState)
   const [isShellMenuOpen, setIsShellMenuOpen] = useState(false)
+  const [shellMenuPosition, setShellMenuPosition] = useState<ShellMenuPosition | null>(null)
   const shellMenuRootRef = useRef<HTMLDivElement | null>(null)
+  const shellMenuTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const shellMenuPanelRef = useRef<HTMLDivElement | null>(null)
   const shellMenuID = useId()
   const iconSize = 14
   const titleIconSize = compact ? 18 : 16
@@ -178,6 +190,27 @@ export function TerminalStatusHeader({
     !compact && typeof secondaryText === 'string' && secondaryText.trim() !== ''
   const canUseShellMenu = connectionKind === 'local' && typeof onSelectShell === 'function'
   const isShellTriggerDisabled = isShellMenuDisabled || isShellSwitching
+  const updateShellMenuPosition = useCallback(() => {
+    const trigger = shellMenuTriggerRef.current
+
+    if (!trigger || typeof window === 'undefined') {
+      return
+    }
+
+    const triggerRect = trigger.getBoundingClientRect()
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+    const menuHeight = shellMenuPanelRef.current?.getBoundingClientRect().height ?? 0
+    const availableTop =
+      menuHeight > 0
+        ? viewportHeight - shellMenuViewportMargin - menuHeight
+        : triggerRect.bottom + shellMenuGap
+
+    setShellMenuPosition({
+      right: Math.max(shellMenuViewportMargin, viewportWidth - triggerRect.right),
+      top: Math.max(shellMenuViewportMargin, Math.min(triggerRect.bottom + shellMenuGap, availableTop)),
+    })
+  }, [])
 
   useEffect(() => {
     if (!isShellMenuOpen) {
@@ -186,7 +219,9 @@ export function TerminalStatusHeader({
 
     const handlePointerDown = (event: PointerEvent) => {
       const root = shellMenuRootRef.current
-      if (root && event.target instanceof Node && !root.contains(event.target)) {
+      const panel = shellMenuPanelRef.current
+
+      if (event.target instanceof Node && !root?.contains(event.target) && !panel?.contains(event.target)) {
         setIsShellMenuOpen(false)
       }
     }
@@ -206,6 +241,23 @@ export function TerminalStatusHeader({
     }
   }, [isShellMenuOpen])
 
+  useEffect(() => {
+    if (!isShellMenuOpen) {
+      setShellMenuPosition(null)
+      return
+    }
+
+    updateShellMenuPosition()
+
+    window.addEventListener('resize', updateShellMenuPosition)
+    window.addEventListener('scroll', updateShellMenuPosition, true)
+
+    return () => {
+      window.removeEventListener('resize', updateShellMenuPosition)
+      window.removeEventListener('scroll', updateShellMenuPosition, true)
+    }
+  }, [isShellMenuOpen, updateShellMenuPosition])
+
   const handleShellTriggerClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
@@ -217,6 +269,7 @@ export function TerminalStatusHeader({
     setIsShellMenuOpen((current) => {
       const next = !current
       if (next) {
+        updateShellMenuPosition()
         void onOpenShellMenu?.()
       }
       return next
@@ -230,6 +283,65 @@ export function TerminalStatusHeader({
     void onSelectShell?.(shellPath)
   }
 
+  const shellMenuPanel = isShellMenuOpen ? (
+    <Box
+      id={shellMenuID}
+      onPointerDown={(event) => event.stopPropagation()}
+      ref={shellMenuPanelRef}
+      role="menu"
+      runaComponent="terminal-status-header-shell-menu"
+      style={{
+        ...terminalStatusHeaderShellMenuStyle,
+        ...(shellMenuPosition
+          ? {
+              right: `${shellMenuPosition.right}px`,
+              top: `${shellMenuPosition.top}px`,
+            }
+          : {
+              right: 0,
+              top: 0,
+              visibility: 'hidden',
+            }),
+      }}
+    >
+      {shellOptions.map((shell) => {
+        const isActiveShell = shell.path === activeShell
+        return (
+          <button
+            key={shell.path}
+            disabled={isShellSwitching}
+            onClick={handleShellSelect(shell.path)}
+            role="menuitem"
+            style={{
+              ...terminalStatusHeaderShellMenuItemStyle,
+              ...(isActiveShell ? terminalStatusHeaderShellMenuItemActiveStyle : {}),
+            }}
+            title={shell.path}
+            type="button"
+          >
+            {isActiveShell ? (
+              <Check
+                color="var(--runa-terminal-status-running, var(--color-accent-emerald-strong))"
+                size={13}
+                strokeWidth={2}
+              />
+            ) : (
+              <span aria-hidden="true" />
+            )}
+            <span style={{ minWidth: 0 }}>
+              <span style={terminalStatusHeaderShellMenuItemNameStyle}>{shell.name}</span>
+              <span style={terminalStatusHeaderShellMenuItemPathStyle}>{shell.path}</span>
+            </span>
+          </button>
+        )
+      })}
+    </Box>
+  ) : null
+  const shellMenuPortal =
+    shellMenuPanel && typeof document !== 'undefined' && document.body
+      ? createPortal(shellMenuPanel, document.body)
+      : shellMenuPanel
+
   const shellMeta = canUseShellMenu ? (
     <Box
       ref={shellMenuRootRef}
@@ -241,6 +353,7 @@ export function TerminalStatusHeader({
         aria-expanded={isShellMenuOpen}
         aria-haspopup="menu"
         disabled={isShellTriggerDisabled}
+        ref={shellMenuTriggerRef}
         onClick={handleShellTriggerClick}
         onPointerDown={(event) => event.stopPropagation()}
         style={terminalStatusHeaderShellTriggerStyle}
@@ -265,47 +378,7 @@ export function TerminalStatusHeader({
           {shellLabel}
         </Text>
       </button>
-      {isShellMenuOpen ? (
-        <Box
-          id={shellMenuID}
-          onPointerDown={(event) => event.stopPropagation()}
-          role="menu"
-          runaComponent="terminal-status-header-shell-menu"
-          style={terminalStatusHeaderShellMenuStyle}
-        >
-          {shellOptions.map((shell) => {
-            const isActiveShell = shell.path === activeShell
-            return (
-              <button
-                key={shell.path}
-                disabled={isShellSwitching}
-                onClick={handleShellSelect(shell.path)}
-                role="menuitem"
-                style={{
-                  ...terminalStatusHeaderShellMenuItemStyle,
-                  ...(isActiveShell ? terminalStatusHeaderShellMenuItemActiveStyle : {}),
-                }}
-                title={shell.path}
-                type="button"
-              >
-                {isActiveShell ? (
-                  <Check
-                    color="var(--runa-terminal-status-running, var(--color-accent-emerald-strong))"
-                    size={13}
-                    strokeWidth={2}
-                  />
-                ) : (
-                  <span aria-hidden="true" />
-                )}
-                <span style={{ minWidth: 0 }}>
-                  <span style={terminalStatusHeaderShellMenuItemNameStyle}>{shell.name}</span>
-                  <span style={terminalStatusHeaderShellMenuItemPathStyle}>{shell.path}</span>
-                </span>
-              </button>
-            )
-          })}
-        </Box>
-      ) : null}
+      {shellMenuPortal}
     </Box>
   ) : (
     <MetaItem compact={compact} runaComponent="terminal-status-header-shell">
