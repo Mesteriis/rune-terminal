@@ -39,10 +39,10 @@ export const providerSettingsBodyStyle = {
 export const providerSettingsEmbeddedToolbarStyle = {
   display: 'flex',
   alignItems: 'flex-start',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-start',
   gap: 'var(--gap-md)',
   flexWrap: 'wrap' as const,
-  paddingBottom: 'var(--gap-md)',
+  paddingBottom: 'var(--gap-sm)',
   borderBottom: '1px solid var(--color-border-subtle)',
 }
 
@@ -88,6 +88,18 @@ export const providerSettingsListCardStyle = {
   gap: 'var(--gap-xs)',
   padding: 'var(--padding-panel)',
   textAlign: 'left' as const,
+}
+
+export function resolveProviderSettingsListCardStyle(isSelected: boolean, isActive: boolean) {
+  return {
+    ...providerSettingsListCardStyle,
+    borderColor: isSelected
+      ? 'var(--color-accent-emerald-strong)'
+      : isActive
+        ? 'var(--color-border-strong)'
+        : 'var(--color-border-subtle)',
+    background: isSelected ? 'var(--color-surface-glass-strong)' : 'var(--color-surface-glass-soft)',
+  }
 }
 
 export const providerSettingsListCardMetaStyle = {
@@ -145,6 +157,13 @@ export const providerSettingsFieldStyle = {
   gap: 'var(--gap-xs)',
 }
 
+export const providerSettingsInlineControlRowStyle = {
+  display: 'flex',
+  gap: 'var(--gap-xs)',
+  alignItems: 'center',
+  flexWrap: 'wrap' as const,
+}
+
 export const providerSettingsInlineCheckboxStyle = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -199,4 +218,32 @@ export const providerSettingsStatusMessageStyle = {
 
 export const providerSettingsErrorMessageStyle = {
   color: 'var(--color-danger-text)',
+}
+
+export const providerSettingsRunListStyle = {
+  display: 'grid',
+  gap: 'var(--gap-xs)',
+}
+
+export function resolveProviderSettingsRunCardStyle(isSelected: boolean) {
+  return {
+    border: isSelected
+      ? '1px solid var(--color-accent-emerald-strong)'
+      : '1px solid var(--color-border-subtle)',
+    borderRadius: 'var(--radius-md)',
+    padding: 'var(--space-sm)',
+    background: isSelected ? 'var(--color-surface-glass-strong)' : 'var(--color-surface-glass-soft)',
+    display: 'grid',
+    gap: '0.2rem',
+    cursor: 'pointer',
+  }
+}
+
+export const providerSettingsDiagnosticsCardStyle = {
+  border: '1px solid var(--color-border-subtle)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-md)',
+  background: 'var(--color-surface-glass-soft)',
+  display: 'grid',
+  gap: 'var(--gap-sm)',
 }

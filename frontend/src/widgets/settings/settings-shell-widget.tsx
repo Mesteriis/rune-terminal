@@ -47,7 +47,7 @@ import {
 const providerKindLabels: Record<AgentProviderView['kind'], string> = {
   codex: 'Codex CLI',
   claude: 'Claude Code CLI',
-  'openai-compatible': 'OpenAI-Compatible HTTP',
+  'openai-compatible': 'OpenAI-compatible HTTP',
 }
 
 function buildSettingsSectionMeta(
@@ -519,9 +519,7 @@ export function SettingsShellWidget() {
       <ClearBox runaComponent="settings-shell-root" style={settingsShellRootStyle}>
         <ClearBox runaComponent="settings-shell-sidebar" style={settingsShellSidebarStyle}>
           <ClearBox style={settingsShellSidebarHeaderStyle}>
-            <Text style={settingsShellEyebrowStyle}>{copy.sidebar.product}</Text>
             <Text style={{ fontWeight: 600 }}>{copy.sidebar.settings}</Text>
-            <Text style={settingsShellMutedTextStyle}>{copy.sidebar.description}</Text>
           </ClearBox>
           <ClearBox style={settingsShellSidebarSectionStyle}>
             <Button

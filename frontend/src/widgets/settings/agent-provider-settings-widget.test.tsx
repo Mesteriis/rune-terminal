@@ -262,13 +262,12 @@ describe('AgentProviderSettingsWidget', () => {
     expect(screen.getByRole('button', { name: 'Probe provider route' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Retry route prepare' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Clear route state' })).toBeVisible()
-    expect(screen.getAllByText('Codex CLI route is reachable.')).toHaveLength(3)
+    expect(screen.getAllByText('Codex CLI route is reachable.')).toHaveLength(2)
     expect(screen.getByText(/Codex CLI · Failing/)).toBeVisible()
     expect(screen.getByText(/Created by avm · updated by avm/)).toBeVisible()
     expect(screen.getByText(/Showing 2 of 42 persisted runs/)).toBeVisible()
-    expect(screen.getByText(/stream · gpt-5.4 · 380ms · first 84ms/)).toBeVisible()
-    expect(screen.getByText('Run diagnostics')).toBeVisible()
-    expect(screen.getByText('Timed out')).toBeVisible()
+    expect(screen.getByText(/stream · gpt-5.4 · 380ms · first response 84ms/)).toBeVisible()
+    expect(screen.queryByText('Run diagnostics')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Provider scope'), {
       target: { value: 'all' },
@@ -289,6 +288,7 @@ describe('AgentProviderSettingsWidget', () => {
     expect(setHistoryLimit).toHaveBeenCalledWith(50)
 
     fireEvent.click(screen.getByText(/Claude Code CLI · Healthy/))
+    expect(screen.getByText('Run diagnostics')).toBeVisible()
     expect(screen.getByText('Claude Code CLI')).toBeVisible()
     expect(screen.getByText('56ms')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Load more history' }))
@@ -298,12 +298,23 @@ describe('AgentProviderSettingsWidget', () => {
   it('renders provider routing chrome through the active locale copy', () => {
     render(<AgentProviderSettingsWidget embedded locale="ru" />)
 
-    expect(screen.getByText('AI / Провайдеры')).toBeVisible()
+    expect(screen.queryByText('AI / Провайдеры')).not.toBeInTheDocument()
     expect(screen.getByText('Настроенные провайдеры')).toBeVisible()
-    expect(screen.getByText('Сигналы gateway')).toBeVisible()
+    expect(screen.getByText('Состояние маршрута')).toBeVisible()
     expect(screen.getByText('Недавняя активность провайдера')).toBeVisible()
-    expect(screen.getByText('Диагностика запуска')).toBeVisible()
+    expect(screen.queryByText('Диагностика запуска')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Проверить маршрут провайдера' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Повторить подготовку маршрута' })).toBeVisible()
+    expect(screen.getByText('Маршрут нужно подготовить снова.')).toBeVisible()
+    expect(screen.getByText(/stream · gpt-5.4 · 380ms · первый ответ 84ms/)).toBeVisible()
     expect(screen.getByLabelText('Поиск истории')).toHaveValue('timeout')
+
+    fireEvent.click(screen.getByText(/Claude Code CLI · Работает/))
+    expect(screen.getByText('Диагностика запуска')).toBeVisible()
+    expect(screen.getByText('Диалог')).toBeVisible()
+    expect(screen.queryByText('Conversation')).not.toBeInTheDocument()
+    expect(screen.queryByText('Актор')).not.toBeInTheDocument()
+    expect(screen.queryByText('Resolved route')).not.toBeInTheDocument()
+    expect(screen.queryByText('Сигналы gateway')).not.toBeInTheDocument()
   })
 })

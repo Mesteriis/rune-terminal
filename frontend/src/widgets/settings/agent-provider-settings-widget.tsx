@@ -29,17 +29,21 @@ import {
   providerSettingsFieldStyle,
   providerSettingsGridStyle,
   providerSettingsInlineCheckboxStyle,
+  providerSettingsInlineControlRowStyle,
   providerSettingsListCardMetaStyle,
-  providerSettingsListCardStyle,
   providerSettingsListStyle,
   providerSettingsRootStyle,
   providerSettingsSectionHeaderStyle,
   providerSettingsSectionStyle,
+  providerSettingsDiagnosticsCardStyle,
+  providerSettingsRunListStyle,
   providerSettingsSidebarStyle,
   providerSettingsStatusMessageStyle,
   providerSettingsToolbarActionsStyle,
   providerSettingsToolbarMetaStyle,
   providerSettingsToolbarStyle,
+  resolveProviderSettingsListCardStyle,
+  resolveProviderSettingsRunCardStyle,
 } from '@/widgets/settings/agent-provider-settings-widget.styles'
 import {
   agentProviderSettingsWidgetCopy,
@@ -49,7 +53,7 @@ import {
 const kindLabels: Record<AgentProviderKind, string> = {
   codex: 'Codex CLI',
   claude: 'Claude Code CLI',
-  'openai-compatible': 'OpenAI-Compatible HTTP',
+  'openai-compatible': 'OpenAI-compatible HTTP',
 }
 
 const defaultSupportedKinds: AgentProviderKind[] = ['codex', 'claude', 'openai-compatible']
@@ -114,14 +118,7 @@ function ModelSelectField({
   return (
     <ClearBox style={providerSettingsFieldStyle}>
       <Label htmlFor={fieldID}>{label}</Label>
-      <ClearBox
-        style={{
-          display: 'flex',
-          gap: 'var(--gap-xs)',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
+      <ClearBox style={providerSettingsInlineControlRowStyle}>
         <Select
           id={fieldID}
           onChange={(event) => onChange(event.currentTarget.value)}
@@ -279,22 +276,23 @@ export function AgentProviderSettingsWidget({
   const selectedGatewayProvider = routeStatusForProvider(selectedProviderID, gateway?.providers ?? null)
   const selectedGatewayRecoveryAction = getProviderGatewayRecoveryAction(selectedGatewayProvider)
   const [selectedHistoryRunID, setSelectedHistoryRunID] = useState('')
-  const selectedHistoryRun =
-    historyRuns.find((run) => run.id === selectedHistoryRunID) ?? historyRuns[0] ?? null
+  const selectedHistoryRun = selectedHistoryRunID
+    ? (historyRuns.find((run) => run.id === selectedHistoryRunID) ?? null)
+    : null
 
   return (
     <RunaDomScopeProvider component="agent-provider-settings-widget">
       <ClearBox runaComponent="agent-provider-settings-root" style={providerSettingsRootStyle}>
         <ClearBox runaComponent="agent-provider-settings-toolbar" style={toolbarStyle}>
-          <ClearBox
-            runaComponent="agent-provider-settings-toolbar-meta"
-            style={providerSettingsToolbarMetaStyle}
-          >
-            <Text style={{ fontWeight: 600 }}>{embedded ? copy.titleEmbedded : copy.title}</Text>
-            <Text style={providerSettingsStatusMessageStyle}>
-              {embedded ? copy.descriptionEmbedded : copy.description}
-            </Text>
-          </ClearBox>
+          {embedded ? null : (
+            <ClearBox
+              runaComponent="agent-provider-settings-toolbar-meta"
+              style={providerSettingsToolbarMetaStyle}
+            >
+              <Text style={{ fontWeight: 600 }}>{copy.title}</Text>
+              <Text style={providerSettingsStatusMessageStyle}>{copy.description}</Text>
+            </ClearBox>
+          )}
           <ClearBox
             runaComponent="agent-provider-settings-toolbar-actions"
             style={providerSettingsToolbarActionsStyle}
@@ -320,17 +318,7 @@ export function AgentProviderSettingsWidget({
                     key={provider.id}
                     onClick={() => selectProvider(provider.id)}
                     runaComponent="agent-provider-settings-provider-card"
-                    style={{
-                      ...providerSettingsListCardStyle,
-                      borderColor: isSelected
-                        ? 'var(--color-accent-emerald-strong)'
-                        : provider.active
-                          ? 'var(--color-border-strong)'
-                          : 'var(--color-border-subtle)',
-                      background: isSelected
-                        ? 'var(--color-surface-glass-strong)'
-                        : 'var(--color-surface-glass-soft)',
-                    }}
+                    style={resolveProviderSettingsListCardStyle(isSelected, provider.active)}
                   >
                     <ClearBox style={providerSettingsListCardMetaStyle}>
                       <Text style={{ fontWeight: 600 }}>
@@ -564,7 +552,7 @@ export function AgentProviderSettingsWidget({
                     ) : null}
                     {selectedGatewayProvider?.route_prepare_message ? (
                       <Text style={providerSettingsStatusMessageStyle}>
-                        {selectedGatewayProvider.route_prepare_message}
+                        {copy.routeStatusMessage(selectedGatewayProvider.route_prepare_message)}
                       </Text>
                     ) : null}
                     {selectedGatewayProvider?.route_prepare_expires_at ? (
@@ -582,7 +570,7 @@ export function AgentProviderSettingsWidget({
                     ) : null}
                     {selectedGatewayProvider?.route_status_message ? (
                       <Text style={providerSettingsStatusMessageStyle}>
-                        {selectedGatewayProvider.route_status_message}
+                        {copy.routeStatusMessage(selectedGatewayProvider.route_status_message)}
                       </Text>
                     ) : null}
                     <ClearBox style={providerSettingsActionsGroupStyle}>
@@ -597,7 +585,9 @@ export function AgentProviderSettingsWidget({
                           disabled={isSaving || isPreparing || draft.mode !== 'existing'}
                           onClick={() => void prewarmSelectedProvider()}
                         >
-                          {isPreparing ? copy.preparing : selectedGatewayRecoveryAction.label}
+                          {isPreparing
+                            ? copy.preparing
+                            : copy.recoveryActionLabel(selectedGatewayRecoveryAction.label)}
                         </Button>
                       ) : null}
                       <Button
@@ -609,7 +599,9 @@ export function AgentProviderSettingsWidget({
                       {selectedGatewayRecoveryAction?.kind === 'probe' &&
                       selectedGatewayRecoveryAction.label !== 'Probe route' ? (
                         <Text style={providerSettingsStatusMessageStyle}>
-                          {copy.suggestedRecovery(selectedGatewayRecoveryAction.label)}
+                          {copy.suggestedRecovery(
+                            copy.recoveryActionLabel(selectedGatewayRecoveryAction.label),
+                          )}
                         </Text>
                       ) : null}
                     </ClearBox>
@@ -663,9 +655,7 @@ export function AgentProviderSettingsWidget({
                     <ClearBox style={providerSettingsSectionStyle}>
                       <ClearBox style={providerSettingsSectionHeaderStyle}>
                         <Text style={{ fontWeight: 600 }}>Codex CLI</Text>
-                        <Text style={providerSettingsStatusMessageStyle}>
-                          Uses local `codex exec` in non-interactive mode for chat completions.
-                        </Text>
+                        <Text style={providerSettingsStatusMessageStyle}>{copy.codexCliDescription}</Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsGridStyle}>
                         <TextInputField
@@ -707,7 +697,9 @@ export function AgentProviderSettingsWidget({
                         <ClearBox style={providerSettingsFieldStyle}>
                           <Label>{copy.status}</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedGatewayProvider?.route_status_message ?? copy.probeProviderRoute}
+                            {selectedGatewayProvider?.route_status_message
+                              ? copy.routeStatusMessage(selectedGatewayProvider.route_status_message)
+                              : copy.probeProviderRoute}
                           </Text>
                         </ClearBox>
                         <ClearBox style={providerSettingsFieldStyle}>
@@ -724,10 +716,7 @@ export function AgentProviderSettingsWidget({
                     <ClearBox style={providerSettingsSectionStyle}>
                       <ClearBox style={providerSettingsSectionHeaderStyle}>
                         <Text style={{ fontWeight: 600 }}>Claude Code CLI</Text>
-                        <Text style={providerSettingsStatusMessageStyle}>
-                          Uses local `claude -p` in non-interactive mode with tools disabled for chat
-                          completions.
-                        </Text>
+                        <Text style={providerSettingsStatusMessageStyle}>{copy.claudeCliDescription}</Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsGridStyle}>
                         <TextInputField
@@ -769,7 +758,9 @@ export function AgentProviderSettingsWidget({
                         <ClearBox style={providerSettingsFieldStyle}>
                           <Label>{copy.status}</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedGatewayProvider?.route_status_message ?? copy.probeProviderRoute}
+                            {selectedGatewayProvider?.route_status_message
+                              ? copy.routeStatusMessage(selectedGatewayProvider.route_status_message)
+                              : copy.probeProviderRoute}
                           </Text>
                         </ClearBox>
                         <ClearBox style={providerSettingsFieldStyle}>
@@ -786,13 +777,11 @@ export function AgentProviderSettingsWidget({
                     <ClearBox style={providerSettingsSectionStyle}>
                       <ClearBox style={providerSettingsSectionHeaderStyle}>
                         <Text style={{ fontWeight: 600 }}>OpenAI-compatible HTTP</Text>
-                        <Text style={providerSettingsStatusMessageStyle}>
-                          Uses an OpenAI-compatible `/v1/models` and `/v1/chat/completions` endpoint.
-                        </Text>
+                        <Text style={providerSettingsStatusMessageStyle}>{copy.httpProviderDescription}</Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsGridStyle}>
                         <TextInputField
-                          hint="Base URL for the HTTP source. Example: http://192.168.1.8:8317"
+                          hint={copy.baseUrlHint}
                           label={copy.baseUrl}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
@@ -917,7 +906,7 @@ export function AgentProviderSettingsWidget({
                         {copy.providerActivityUnavailable(historyErrorMessage)}
                       </Text>
                     ) : null}
-                    <ClearBox style={{ display: 'grid', gap: 'var(--gap-xs)' }}>
+                    <ClearBox style={providerSettingsRunListStyle}>
                       {isHistoryLoading ? (
                         <Text style={providerSettingsStatusMessageStyle}>{copy.loadingProviderActivity}</Text>
                       ) : historyRuns.length ? (
@@ -926,21 +915,7 @@ export function AgentProviderSettingsWidget({
                             aria-pressed={selectedHistoryRun?.id === run.id}
                             key={run.id}
                             onClick={() => setSelectedHistoryRunID(run.id)}
-                            style={{
-                              border:
-                                selectedHistoryRun?.id === run.id
-                                  ? '1px solid var(--color-accent-emerald-strong)'
-                                  : '1px solid var(--color-border-subtle)',
-                              borderRadius: 'var(--radius-md)',
-                              padding: 'var(--space-sm)',
-                              background:
-                                selectedHistoryRun?.id === run.id
-                                  ? 'var(--color-surface-glass-strong)'
-                                  : 'var(--color-surface-glass-soft)',
-                              display: 'grid',
-                              gap: '0.2rem',
-                              cursor: 'pointer',
-                            }}
+                            style={resolveProviderSettingsRunCardStyle(selectedHistoryRun?.id === run.id)}
                           >
                             <Text style={{ fontWeight: 600 }}>
                               {run.provider_display_name || run.provider_id} ·{' '}
@@ -948,7 +923,7 @@ export function AgentProviderSettingsWidget({
                             </Text>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {run.request_mode} · {run.model || copy.defaultModel} ·{' '}
-                              {formatDuration(run.duration_ms)} · first{' '}
+                              {formatDuration(run.duration_ms)} · {copy.firstResponse.toLowerCase()}{' '}
                               {formatDuration(run.first_response_latency_ms)} ·{' '}
                               {formatRunTimestamp(run.completed_at, copy)}
                             </Text>
@@ -967,16 +942,7 @@ export function AgentProviderSettingsWidget({
                       </Button>
                     ) : null}
                     {selectedHistoryRun ? (
-                      <ClearBox
-                        style={{
-                          border: '1px solid var(--color-border-subtle)',
-                          borderRadius: 'var(--radius-md)',
-                          padding: 'var(--space-md)',
-                          background: 'var(--color-surface-glass-soft)',
-                          display: 'grid',
-                          gap: 'var(--gap-sm)',
-                        }}
-                      >
+                      <ClearBox style={providerSettingsDiagnosticsCardStyle}>
                         <ClearBox style={providerSettingsSectionHeaderStyle}>
                           <Text style={{ fontWeight: 600 }}>{copy.runDiagnostics}</Text>
                           <Text style={providerSettingsStatusMessageStyle}>
@@ -1073,12 +1039,12 @@ export function AgentProviderSettingsWidget({
                         ) : null}
                         {selectedHistoryRun.route_status_message ? (
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedHistoryRun.route_status_message}
+                            {copy.routeStatusMessage(selectedHistoryRun.route_status_message)}
                           </Text>
                         ) : null}
                         {selectedHistoryRun.route_prepare_message ? (
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedHistoryRun.route_prepare_message}
+                            {copy.routeStatusMessage(selectedHistoryRun.route_prepare_message)}
                           </Text>
                         ) : null}
                       </ClearBox>

@@ -112,8 +112,7 @@ export const settingsShellCopy: Record<AppLocale, SettingsShellCopy> = {
       loadingShort: 'Loading…',
       loadingProviders: 'Loading provider catalog…',
       noDiscoveredModels: 'The backend has not returned models for this provider yet.',
-      noProviders:
-        'No direct AI providers yet. Add a CLI or HTTP source first in the `Installed apps` section.',
+      noProviders: 'No AI providers yet. Add a CLI or HTTP source first in AI providers.',
       providerAvailable: 'Available for activation in the provider catalog.',
       providerActive: 'Active in the current runtime.',
       refreshModels: 'Refresh models',
@@ -148,74 +147,65 @@ export const settingsShellCopy: Record<AppLocale, SettingsShellCopy> = {
     sections: {
       general: {
         navTitle: 'General',
-        navDescription: 'Runtime mode, shell language, and bootstrap context.',
+        navDescription: 'Language, theme, and startup.',
         shellTitle: 'General',
-        shellDescription:
-          'Desktop runtime lifecycle, language selection, and current shell bootstrap context.',
+        shellDescription: 'Language, appearance, window title, and launch behavior for the active shell.',
         groupLabel: 'General',
       },
       'ai-apps': {
         navTitle: 'AI providers',
-        navDescription: 'CLI and HTTP providers for the AI runtime.',
-        shellTitle: 'AI / Providers',
-        shellDescription:
-          'Manage CLI and OpenAI-compatible HTTP providers, their runtime readiness, and connection parameters without leaving the shared settings shell.',
+        navDescription: 'Codex, Claude, and HTTP sources.',
+        shellTitle: 'AI providers',
+        shellDescription: 'Connect and check providers that can serve the main chat.',
         groupLabel: 'AI',
       },
       'ai-models': {
         navTitle: 'Models',
         navDescription: 'Models exposed to the main chat.',
-        shellTitle: 'AI / Models',
-        shellDescription:
-          'Catalog of models returned by the backend for active providers and their exposure in the main AI chat.',
+        shellTitle: 'AI models',
+        shellDescription: 'Choose which discovered provider models appear in the main chat.',
         groupLabel: 'AI',
       },
       'ai-composer': {
         navTitle: 'Composer',
         navDescription: 'Enter / Shift+Enter chat behavior.',
-        shellTitle: 'AI / Composer',
-        shellDescription:
-          'Runtime-backed keyboard behavior for the AI composer: send/newline shortcut selection stored in the shared settings contract.',
+        shellTitle: 'Chat input',
+        shellDescription: 'Choose the send and newline shortcuts for the AI composer.',
         groupLabel: 'AI',
       },
       'ai-limits': {
-        navTitle: 'Limits',
-        navDescription: 'Route readiness and future quota surfaces.',
-        shellTitle: 'AI / Limits',
-        shellDescription:
-          'Current provider readiness surface. Full quota and rate-limit contracts will arrive as a separate backend step.',
+        navTitle: 'Status',
+        navDescription: 'Provider readiness for chat.',
+        shellTitle: 'Provider status',
+        shellDescription: 'See which providers are ready, disabled, or need attention.',
         groupLabel: 'AI',
       },
       terminal: {
         navTitle: 'Terminal',
         navDescription: 'Terminal runtime preferences.',
         shellTitle: 'Terminal',
-        shellDescription:
-          'Dedicated entry point for terminal runtime and future terminal preferences, without mixing them into general or AI settings.',
+        shellDescription: 'Terminal defaults and future terminal preferences.',
         groupLabel: 'Runtime',
       },
       remote: {
         navTitle: 'Remote',
         navDescription: 'SSH profiles and config import.',
         shellTitle: 'Remote',
-        shellDescription:
-          'Backend-owned SSH profiles, narrow ~/.ssh/config import, and explicit limits around advanced remote topology.',
+        shellDescription: 'Saved SSH profiles, ~/.ssh/config import, and remote shell launch options.',
         groupLabel: 'Runtime',
       },
       mcp: {
         navTitle: 'MCP',
         navDescription: 'External server registration and lifecycle.',
         shellTitle: 'MCP',
-        shellDescription:
-          'Register remote MCP endpoints and control lifecycle through the backend-owned MCP runtime without implicit AI context injection.',
+        shellDescription: 'Register remote MCP endpoints and control their lifecycle explicitly.',
         groupLabel: 'Runtime',
       },
       plugins: {
         navTitle: 'Plugins',
         navDescription: 'Local catalog and install lifecycle.',
         shellTitle: 'Plugins',
-        shellDescription:
-          'Backend-owned local plugin catalog with explicit git/zip install sources, runtime-safe activation checks, and future-facing access metadata.',
+        shellDescription: 'Install, update, enable, or remove local plugin bundles.',
         groupLabel: 'Runtime',
       },
       commander: {
@@ -223,30 +213,29 @@ export const settingsShellCopy: Record<AppLocale, SettingsShellCopy> = {
         navDescription: 'File-manager surface settings.',
         shellTitle: 'Commander',
         shellDescription:
-          'Navigation surface for the file manager and dual-pane behavior. Commander-specific options will appear here as they move out of widget-local state.',
+          'File manager and dual-pane behavior. Commander options will appear here as they become configurable.',
         groupLabel: 'Workspace',
       },
     },
     sidebar: {
-      description:
-        'Shared navigator for shell, AI runtime, terminal, remote, MCP, plugins, and commander surfaces.',
+      description: 'Choose a section.',
       product: 'Rune Terminal',
-      settings: 'Settings',
+      settings: 'Sections',
     },
   },
   ru: {
     aiLimits: {
       activeBadge: 'активен',
       description:
-        'Сейчас этот раздел показывает только готовность маршрутов для чата. Реальные квоты и лимиты запросов появятся отдельным backend-шагом.',
+        'Сейчас здесь видно, какие провайдеры готовы к чату. Квоты и лимиты появятся отдельной настройкой.',
       loading: 'Загружаю каталог провайдеров…',
       noProviders: 'Провайдеров пока нет.',
       routeActive: 'Активный провайдер для текущего чата.',
       routeAuthRequired: 'Нужен локальный вход в CLI, прежде чем маршрут станет доступен.',
-      routeConfiguredHttp: 'HTTP-источник настроен. Обнови модели, чтобы проверить удалённый каталог.',
+      routeConfiguredHttp: 'HTTP-источник настроен. Обновите модели, чтобы проверить удалённый каталог.',
       routeDisabled: 'Провайдер выключен; чат не будет отправлять сюда запросы.',
       routeDisabledHttp: 'HTTP-источник выключен; чат не будет отправлять сюда запросы.',
-      routeReady: 'Маршрут backend готов принимать запросы чата.',
+      routeReady: 'Маршрут готов принимать запросы чата.',
       routeUnchecked: 'Маршрут ещё не проверялся.',
       routeUnknown: 'Неизвестное состояние готовности провайдера.',
       title: 'Статус провайдеров',
@@ -261,26 +250,24 @@ export const settingsShellCopy: Record<AppLocale, SettingsShellCopy> = {
       exposeModelAriaLabel: (model) => `Показывать ${model} в основном селекторе AI-моделей`,
       loadingShort: 'Загрузка…',
       loadingProviders: 'Загружаю каталог провайдеров…',
-      noDiscoveredModels: 'Backend пока не вернул модели для этого провайдера.',
+      noDiscoveredModels: 'Сервер пока не вернул модели для этого провайдера.',
       noProviders:
-        'Прямых AI-провайдеров пока нет. Сначала добавь CLI или HTTP-источник в разделе «AI-провайдеры».',
+        'Провайдеров AI пока нет. Сначала добавьте CLI или HTTP-источник в разделе «Провайдеры AI».',
       providerAvailable: 'Доступен для активации в каталоге провайдеров.',
-      providerActive: 'Сейчас активен в рантайме.',
+      providerActive: 'Сейчас активен.',
       refreshModels: 'Обновить модели',
-      sectionDescription:
-        'Переключай провайдера, чтобы посмотреть автоматически найденный каталог, доступный для выбора в основном чате.',
+      sectionDescription: 'Переключайте провайдера, чтобы выбрать модели, доступные в основном чате.',
       routeNotConfigured: 'URL OpenAI-compatible источника ещё не настроен.',
       routeNotProbedClaude: 'Маршрут Claude Code CLI ещё не проверялся.',
       routeNotProbedCodex: 'Маршрут Codex CLI ещё не проверялся.',
       routeUnknown: 'Неизвестное состояние подключения провайдера.',
     },
     aiParent: {
-      description: 'Провайдеры, модели и лимиты чата.',
+      description: 'Провайдеры, модели и статус.',
       title: 'AI',
     },
     commander: {
-      description:
-        'Этот раздел зарезервирован для настроек Commander после переноса из локального состояния виджета.',
+      description: 'Этот раздел зарезервирован для настроек Commander.',
       notConnected: 'Отдельная поверхность настройки Commander ещё не подключена.',
       planned: 'Запланировано',
       preferencesTitle: 'Настройки Commander',
@@ -298,89 +285,80 @@ export const settingsShellCopy: Record<AppLocale, SettingsShellCopy> = {
     sections: {
       general: {
         navTitle: 'Основные',
-        navDescription: 'Режим рантайма, язык оболочки и контекст запуска.',
+        navDescription: 'Язык, тема и запуск.',
         shellTitle: 'Основные',
-        shellDescription: 'Жизненный цикл desktop-рантайма, выбор языка и текущий контекст запуска оболочки.',
+        shellDescription: 'Язык интерфейса, тема, заголовок окна и поведение запуска.',
         groupLabel: 'Основные',
       },
       'ai-apps': {
-        navTitle: 'AI-провайдеры',
-        navDescription: 'CLI и HTTP-провайдеры для AI-рантайма.',
-        shellTitle: 'AI / Провайдеры',
-        shellDescription:
-          'Управление CLI и OpenAI-compatible HTTP-провайдерами, их готовностью в рантайме и параметрами подключения без выхода из общего окна настроек.',
+        navTitle: 'Провайдеры AI',
+        navDescription: 'Codex, Claude и HTTP-источники.',
+        shellTitle: 'Провайдеры AI',
+        shellDescription: 'Подключение и проверка провайдеров для основного чата.',
         groupLabel: 'AI',
       },
       'ai-models': {
         navTitle: 'Модели',
         navDescription: 'Модели, доступные в основном чате.',
-        shellTitle: 'AI / Модели',
-        shellDescription:
-          'Каталог моделей, которые backend вернул для активных провайдеров, и их доступность в основном AI-чате.',
+        shellTitle: 'Модели AI',
+        shellDescription: 'Выберите, какие найденные модели показывать в основном чате.',
         groupLabel: 'AI',
       },
       'ai-composer': {
-        navTitle: 'Композер',
-        navDescription: 'Поведение Enter / Shift+Enter в чате.',
-        shellTitle: 'AI / Композер',
-        shellDescription:
-          'Поведение клавиатуры в AI-композере: выбор сочетания для отправки и новой строки хранится в общем контракте настроек.',
+        navTitle: 'Ввод',
+        navDescription: 'Отправка и новая строка.',
+        shellTitle: 'Ввод в чате',
+        shellDescription: 'Настройте сочетания для отправки сообщения и переноса строки.',
         groupLabel: 'AI',
       },
       'ai-limits': {
-        navTitle: 'Лимиты',
-        navDescription: 'Готовность маршрутов и будущие квоты.',
-        shellTitle: 'AI / Лимиты',
-        shellDescription:
-          'Текущая поверхность готовности провайдеров. Полноценные контракты квот и лимитов запросов будут добавлены отдельным backend-шагом.',
+        navTitle: 'Статус',
+        navDescription: 'Готовность провайдеров к чату.',
+        shellTitle: 'Статус провайдеров',
+        shellDescription: 'Посмотрите, какие провайдеры готовы, выключены или требуют внимания.',
         groupLabel: 'AI',
       },
       terminal: {
         navTitle: 'Терминал',
-        navDescription: 'Настройки терминального рантайма.',
+        navDescription: 'Шрифт, курсор и прокрутка.',
         shellTitle: 'Терминал',
-        shellDescription:
-          'Отдельная точка входа для терминального рантайма и будущих настроек терминала без смешения с общими или AI-настройками.',
-        groupLabel: 'Рантайм',
+        shellDescription: 'Настройки терминала по умолчанию и будущие параметры терминального виджета.',
+        groupLabel: 'Система',
       },
       remote: {
         navTitle: 'Удалённый доступ',
-        navDescription: 'SSH-профили и импорт из конфига.',
+        navDescription: 'SSH-профили и импорт.',
         shellTitle: 'Удалённый доступ',
-        shellDescription:
-          'Backend-owned SSH-профили, узкий импорт из ~/.ssh/config и явные ограничения вокруг расширенной удалённой топологии.',
-        groupLabel: 'Рантайм',
+        shellDescription: 'Сохранённые SSH-профили, импорт из ~/.ssh/config и запуск удалённой оболочки.',
+        groupLabel: 'Система',
       },
       mcp: {
         navTitle: 'MCP',
-        navDescription: 'Регистрация внешних серверов и жизненный цикл.',
+        navDescription: 'Серверы и запуск.',
         shellTitle: 'MCP',
-        shellDescription:
-          'Регистрируй удалённые MCP-endpoints и управляй жизненным циклом через backend-owned MCP-рантайм без неявной подстановки AI-контекста.',
-        groupLabel: 'Рантайм',
+        shellDescription: 'Регистрация удалённых MCP-серверов и явное управление их запуском.',
+        groupLabel: 'Система',
       },
       plugins: {
         navTitle: 'Плагины',
-        navDescription: 'Локальный каталог и установка.',
+        navDescription: 'Установка и включение.',
         shellTitle: 'Плагины',
-        shellDescription:
-          'Backend-owned локальный каталог плагинов с явными git/zip-источниками установки, безопасными runtime-проверками активации и будущими метаданными доступа.',
-        groupLabel: 'Рантайм',
+        shellDescription: 'Установка, обновление, включение и удаление локальных пакетов плагинов.',
+        groupLabel: 'Система',
       },
       commander: {
         navTitle: 'Commander',
         navDescription: 'Настройки файлового менеджера.',
         shellTitle: 'Commander',
         shellDescription:
-          'Навигационная поверхность файлового менеджера и двухпанельного поведения. Настройки Commander будут появляться здесь по мере вывода из локального состояния виджета.',
+          'Файловый менеджер и двухпанельное поведение. Настройки Commander появятся здесь по мере готовности.',
         groupLabel: 'Рабочая область',
       },
     },
     sidebar: {
-      description:
-        'Общий навигатор по оболочке, AI-рантайму, терминалу, удалённому доступу, MCP, плагинам и Commander.',
+      description: 'Выберите раздел.',
       product: 'Rune Terminal',
-      settings: 'Настройки',
+      settings: 'Разделы',
     },
   },
   'zh-CN': {

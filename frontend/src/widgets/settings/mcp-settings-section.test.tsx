@@ -24,6 +24,10 @@ vi.mock('@/features/mcp/api/client', () => ({
   updateRemoteMCPServer: vi.fn(),
 }))
 
+vi.mock('@/features/i18n/model/locale-provider', () => ({
+  useAppLocale: () => ({ locale: 'en' }),
+}))
+
 afterEach(() => {
   vi.clearAllMocks()
 })

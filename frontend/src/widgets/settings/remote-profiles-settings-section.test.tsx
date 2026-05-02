@@ -29,6 +29,10 @@ vi.mock('@/features/remote/api/client', () => ({
   selectRemoteProfileConnection: vi.fn(),
 }))
 
+vi.mock('@/features/i18n/model/locale-provider', () => ({
+  useAppLocale: () => ({ locale: 'en' }),
+}))
+
 afterEach(() => {
   vi.clearAllMocks()
 })
@@ -620,7 +624,7 @@ describe('RemoteProfilesSettingsSection', () => {
       expect(fetchRemoteProfileTmuxSessions).toHaveBeenCalledWith('conn-prod')
       expect(screen.getByText('2 discovered · 1 attached · 1 detached')).toBeInTheDocument()
       expect(screen.getByText('prod-main · attached · 2 windows')).toBeInTheDocument()
-      expect(screen.getByText('prod-jobs · detached · 1 windows')).toBeInTheDocument()
+      expect(screen.getByText('prod-jobs · detached · 1 window')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Use session' })[1]!)
@@ -722,7 +726,7 @@ describe('RemoteProfilesSettingsSection', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('prod-main · attached · 2 windows')).not.toBeInTheDocument()
-      expect(screen.getByText('prod-jobs · detached · 1 windows')).toBeInTheDocument()
+      expect(screen.getByText('prod-jobs · detached · 1 window')).toBeInTheDocument()
     })
   })
 
@@ -762,7 +766,7 @@ describe('RemoteProfilesSettingsSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Browse tmux' }))
 
     await waitFor(() => {
-      expect(screen.getByText('prod-jobs · detached · 1 windows')).toBeInTheDocument()
+      expect(screen.getByText('prod-jobs · detached · 1 window')).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Resume session' })[1]!)

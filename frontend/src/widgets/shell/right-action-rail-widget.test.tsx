@@ -10,6 +10,7 @@ import { type WorkspaceWidgetCatalogState } from '@/features/workspace/model/wid
 import { resolveRuntimeContext } from '@/shared/api/runtime'
 import { focusWorkspaceWidget, openDirectoryWorkspaceWidget } from '@/shared/api/workspace'
 import { RightActionRailWidget } from '@/widgets/shell/right-action-rail-widget'
+import { rightActionRailWidgetCopy } from '@/widgets/shell/right-action-rail-widget-copy'
 
 vi.mock('@/features/terminal/api/client', () => ({
   createTerminalTab: vi.fn(),
@@ -171,6 +172,13 @@ describe('RightActionRailWidget', () => {
     expect(screen.getByRole('menuitem', { name: 'Создать виджет Terminal' })).toBeEnabled()
     expect(screen.getByRole('menuitem', { name: 'Создать виджет Files' })).toBeEnabled()
     expect(screen.getByRole('menuitem', { name: 'Preview недоступен: Нужен путь к файлу' })).toBeDisabled()
+  })
+
+  it('uses clear Russian copy for the settings modal descriptor', () => {
+    expect(rightActionRailWidgetCopy.ru.settingsDescription).toBe(
+      'Настройки оболочки, AI, терминала, удалённого доступа, MCP, плагинов и Commander.',
+    )
+    expect(rightActionRailWidgetCopy.ru.settingsDescription).not.toMatch(/\bshell\b|Terminal/)
   })
 
   it('creates catalog-creatable files widgets through an explicit repo-root path handoff', async () => {

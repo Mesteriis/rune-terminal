@@ -20,6 +20,10 @@ vi.mock('@/features/plugins/api/client', () => ({
   updateInstalledPlugin: vi.fn(),
 }))
 
+vi.mock('@/features/i18n/model/locale-provider', () => ({
+  useAppLocale: () => ({ locale: 'en' }),
+}))
+
 afterEach(() => {
   vi.clearAllMocks()
 })

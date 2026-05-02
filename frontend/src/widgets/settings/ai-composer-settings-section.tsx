@@ -48,17 +48,16 @@ const aiComposerSettingsCopy: Record<AppLocale, AiComposerSettingsCopy> = {
   },
   ru: {
     currentMode: 'Текущий режим',
-    description:
-      'Поведение клавиатуры AI composer хранится в runtime. Выбранное сочетание для отправки и новой строки записывается в общий контракт настроек runtime.',
+    description: 'Выберите, какое сочетание отправляет сообщение, а какое переносит строку.',
     enterSendsDescription: 'Shift+Enter вставляет новую строку.',
     enterSendsLabel: 'Enter отправляет',
     loading: 'Загрузка',
     modEnterSendsDescription: 'Обычный Enter вставляет новую строку.',
     modEnterSendsLabel: 'Ctrl/Cmd+Enter отправляет',
-    optionLabel: 'Сочетание отправки composer',
-    runtime: 'Runtime',
+    optionLabel: 'Сочетание отправки',
+    runtime: 'Сохранено',
     saving: 'Сохранение',
-    storedPreference: 'Настройка хранится в runtime DB и сразу применяется к AI composer.',
+    storedPreference: 'Настройка сразу применяется к полю ввода чата.',
     title: 'Отправка с клавиатуры',
   },
   'zh-CN': {

@@ -10,13 +10,16 @@ export type AgentProviderSettingsWidgetCopy = {
   allowedUsersHint: string
   averageLatency: string
   baseUrl: string
+  baseUrlHint: string
   chatEnabledModels: (count: number) => string
+  claudeCliDescription: string
   chatVisibility: string
   chooseProvider: string
   clearRouteState: string
   command: string
   commandHint: (command: string) => string
   completed: string
+  codexCliDescription: string
   description: string
   descriptionEmbedded: string
   configuredProviders: string
@@ -41,6 +44,7 @@ export type AgentProviderSettingsWidgetCopy = {
   historySearchHint: string
   historySearchPlaceholder: string
   historyWindow: string
+  httpProviderDescription: string
   kind: (label: string, active: boolean) => string
   loading: string
   loadingModels: string
@@ -73,6 +77,7 @@ export type AgentProviderSettingsWidgetCopy = {
   providerScope: string
   providerStatus: string
   providerVisibility: string
+  recoveryActionLabel: (label: string) => string
   ready: string
   recentProviderActivity: string
   recentProviderActivityDescription: string
@@ -83,6 +88,7 @@ export type AgentProviderSettingsWidgetCopy = {
   resolvedRoute: string
   routeChecked: string
   routePolicy: string
+  routeStatusMessage: (message: string) => string
   routeState: string
   runDiagnostics: string
   runDiagnosticsDescription: string
@@ -139,13 +145,17 @@ export const agentProviderSettingsWidgetCopy: Record<AppLocale, AgentProviderSet
     allowedUsersHint: 'Comma-separated usernames for future shared-provider access control.',
     averageLatency: 'Average latency',
     baseUrl: 'Base URL',
+    baseUrlHint: 'Base URL for the HTTP source. Example: http://192.168.1.8:8317',
     chatEnabledModels: (count) => `${count} models enabled for the chat toolbar.`,
+    claudeCliDescription:
+      'Uses local `claude -p` in non-interactive mode with tools disabled for chat completions.',
     chatVisibility: 'Chat visibility',
     chooseProvider: 'Choose an existing provider on the left or create a new one.',
     clearRouteState: 'Clear route state',
     command: 'Command',
     commandHint: (command) => `Command name or absolute path. Defaults to ${command}.`,
     completed: 'Completed',
+    codexCliDescription: 'Uses local `codex exec` in non-interactive mode for chat completions.',
     description: 'Manage local Codex CLI and Claude Code CLI routing without leaving the shell modal.',
     descriptionEmbedded:
       'Connect CLI providers for chat and manage the active runtime without leaving settings sections.',
@@ -172,6 +182,7 @@ export const agentProviderSettingsWidgetCopy: Record<AppLocale, AgentProviderSet
     historySearchHint: 'Filter by provider, model, request mode, error, or conversation id.',
     historySearchPlaceholder: 'Search recent runs',
     historyWindow: 'History window',
+    httpProviderDescription: 'Uses an OpenAI-compatible `/v1/models` and `/v1/chat/completions` endpoint.',
     kind: (label, active) => `Kind: ${label}${active ? ' · currently active' : ''}`,
     loading: 'Loading provider catalog…',
     loadingModels: 'Loading…',
@@ -205,6 +216,7 @@ export const agentProviderSettingsWidgetCopy: Record<AppLocale, AgentProviderSet
     providerScope: 'Provider scope',
     providerStatus: 'Provider status',
     providerVisibility: 'Provider visibility',
+    recoveryActionLabel: (label) => label,
     ready: 'Ready',
     recentProviderActivity: 'Recent provider activity',
     recentProviderActivityDescription:
@@ -216,6 +228,7 @@ export const agentProviderSettingsWidgetCopy: Record<AppLocale, AgentProviderSet
     resolvedRoute: 'Resolved route',
     routeChecked: 'Route checked',
     routePolicy: 'Route policy',
+    routeStatusMessage: (message) => message,
     routeState: 'Route state',
     runDiagnostics: 'Run diagnostics',
     runDiagnosticsDescription: 'Detailed operator view for the selected persisted provider run.',
@@ -264,30 +277,31 @@ export const agentProviderSettingsWidgetCopy: Record<AppLocale, AgentProviderSet
   ru: {
     active: 'Активен',
     activate: 'Активировать',
-    actor: 'Актор',
+    actor: 'Пользователь',
     addProvider: (label) => `Добавить ${label}`,
     allowedUsers: 'Разрешенные пользователи',
     allProviders: 'Все провайдеры',
     allowedUsersHint: 'Имена пользователей через запятую для будущего общего доступа к провайдеру.',
     averageLatency: 'Средняя задержка',
-    baseUrl: 'Base URL',
-    chatEnabledModels: (count) => `${count} моделей включено для панели чата.`,
+    baseUrl: 'URL источника',
+    baseUrlHint: 'URL HTTP-источника. Пример: http://192.168.1.8:8317',
+    chatEnabledModels: (count) => `${count} моделей включено для чата.`,
+    claudeCliDescription: 'Использует локальный `claude -p` для ответов чата.',
     chatVisibility: 'Видимость в чате',
-    chooseProvider: 'Выберите существующего провайдера слева или создайте нового.',
+    chooseProvider: 'Выберите провайдера слева или создайте нового.',
     clearRouteState: 'Очистить состояние маршрута',
     command: 'Команда',
     commandHint: (command) => `Имя команды или абсолютный путь. По умолчанию ${command}.`,
     completed: 'Завершено',
-    description:
-      'Управляйте маршрутизацией локальных Codex CLI и Claude Code CLI прямо в модальном окне shell.',
-    descriptionEmbedded:
-      'Подключайте CLI-провайдеры для чата и управляйте активным runtime без переходов между settings sections.',
+    codexCliDescription: 'Использует локальный `codex exec` для ответов чата.',
+    description: 'Подключайте Codex CLI, Claude Code CLI и HTTP-провайдеры для чата.',
+    descriptionEmbedded: 'Подключайте Codex, Claude и HTTP-провайдеры для чата.',
     configuredProviders: 'Настроенные провайдеры',
     connection: 'Подключение',
-    conversation: 'Conversation',
+    conversation: 'Диалог',
     createProvider: 'Создать провайдера',
     createdUpdated: (createdBy, updatedBy) => `Создал ${createdBy} · обновил ${updatedBy}`,
-    currentActor: (actor) => `Текущий актор: ${actor}`,
+    currentActor: (actor) => `Текущий пользователь: ${actor}`,
     currentStatus: 'Текущий статус',
     defaultModel: 'модель по умолчанию',
     delete: 'Удалить',
@@ -295,39 +309,39 @@ export const agentProviderSettingsWidgetCopy: Record<AppLocale, AgentProviderSet
     disabledProviderHint: 'Отключенные провайдеры остаются в каталоге, но не могут стать активными.',
     displayName: 'Отображаемое имя',
     displayNamePlaceholder: 'Отображаемое имя провайдера',
-    errorClass: 'Класс ошибки',
+    errorClass: 'Тип ошибки',
     firstResponse: 'Первый ответ',
-    gatewaySignals: 'Сигналы gateway',
-    gatewaySignalsDescription: 'История последних запусков и сигналы здоровья маршрута активного провайдера.',
-    gatewayTelemetryUnavailable: (message) => `Телеметрия gateway недоступна: ${message}`,
+    gatewaySignals: 'Состояние маршрута',
+    gatewaySignalsDescription: 'Последние проверки и состояние маршрута выбранного провайдера.',
+    gatewayTelemetryUnavailable: (message) => `Данные маршрута недоступны: ${message}`,
     historySearch: 'Поиск истории',
-    historySearchHint: 'Фильтр по провайдеру, модели, режиму запроса, ошибке или conversation id.',
+    historySearchHint: 'Фильтр по провайдеру, модели, режиму запроса, ошибке или id диалога.',
     historySearchPlaceholder: 'Искать последние запуски',
     historyWindow: 'Окно истории',
-    kind: (label, active) => `Тип: ${label}${active ? ' · сейчас активен' : ''}`,
+    httpProviderDescription: 'Использует OpenAI-compatible API: `/v1/models` и `/v1/chat/completions`.',
+    kind: (label, active) => `${label}${active ? ' · сейчас активен' : ''}`,
     loading: 'Загрузка каталога провайдеров…',
     loadingModels: 'Загрузка…',
     loadingProviderActivity: 'Загрузка активности провайдера…',
     lastError: 'Последняя ошибка',
-    loadMoreHistory: 'Загрузить еще историю',
+    loadMoreHistory: 'Загрузить ещё',
     manualOnly: 'Только вручную',
     model: 'Модель',
-    modelCodexHint: 'CLI aliases моделей разрешаются локальным Codex CLI.',
-    modelClaudeHint: 'Общие Claude Code aliases доступны локально; точную поддержку моделей определяет CLI.',
-    modelHttpHint:
-      'Backend читает `/v1/models` из этого источника и показывает включенные модели в панели чата.',
+    modelCodexHint: 'Псевдонимы моделей разрешает локальный Codex CLI.',
+    modelClaudeHint: 'Точную поддержку моделей определяет Claude Code CLI.',
+    modelHttpHint: 'Приложение читает `/v1/models` из этого источника и показывает включённые модели в чате.',
     noModelsLoaded: 'Модели не загружены',
-    noProviderActivity: 'Активность провайдера не найдена для текущих backend-фильтров.',
+    noProviderActivity: 'Запусков провайдера по текущим фильтрам не найдено.',
     noProviderSelected: 'Провайдер не выбран',
     noDiscoveredModelsEnabled: 'Обнаруженные модели пока не включены.',
     noProviders: 'Провайдеров пока нет. Создайте провайдера на панели выше.',
-    ownerHint: 'Метаданные владельца для будущего управления провайдерами.',
+    ownerHint: 'Владелец настройки провайдера.',
     ownerUsername: 'Имя владельца',
     prepareOnActivate: 'Подготовить при активации',
     prepareOnAppStart: 'Подготовить при старте приложения',
     preparing: 'Подготовка…',
-    prewarmPolicy: 'Политика prewarm',
-    prewarmSectionDescription: 'Поведение prewarm и warm TTL выбранного маршрута провайдера.',
+    prewarmPolicy: 'Подготовка маршрута',
+    prewarmSectionDescription: 'Когда подготавливать выбранный маршрут и как долго считать его готовым.',
     private: 'Приватный',
     probeLatency: 'Задержка проверки',
     probeProviderRoute: 'Проверить маршрут провайдера',
@@ -337,38 +351,75 @@ export const agentProviderSettingsWidgetCopy: Record<AppLocale, AgentProviderSet
     providerScope: 'Область провайдера',
     providerStatus: 'Статус провайдера',
     providerVisibility: 'Видимость провайдера',
+    recoveryActionLabel: (label) =>
+      ({
+        'Probe route': 'Проверить маршрут',
+        'Re-check binary': 'Проверить команду ещё раз',
+        'Re-check auth': 'Проверить вход ещё раз',
+        'Retry route probe': 'Повторить проверку маршрута',
+        'Re-check models': 'Проверить модели ещё раз',
+        'Retry route prepare': 'Повторить подготовку маршрута',
+        'Re-check route': 'Проверить маршрут ещё раз',
+        'Prepare route': 'Подготовить маршрут',
+        'Refresh route': 'Обновить маршрут',
+      })[label] ?? label,
     ready: 'Готов',
     recentProviderActivity: 'Недавняя активность провайдера',
-    recentProviderActivityDescription: 'Сохраненная история gateway для того же backend-маршрута провайдера.',
+    recentProviderActivityDescription: 'Сохранённая история запусков выбранного маршрута.',
     refresh: 'Обновить',
     requestMode: 'Режим запроса',
     reset: 'Сбросить',
     resolvedBinary: 'Найденный бинарь',
-    resolvedRoute: 'Resolved route',
+    resolvedRoute: 'Итоговый маршрут',
     routeChecked: 'Маршрут проверен',
-    routePolicy: 'Политика маршрута',
+    routePolicy: 'Подготовка',
+    routeStatusMessage: (message) => {
+      if (message === 'Codex CLI route is reachable.') {
+        return 'Маршрут Codex CLI доступен.'
+      }
+      if (message === 'Claude route is reachable.') {
+        return 'Маршрут Claude доступен.'
+      }
+      if (message === 'Route should be prepared again.') {
+        return 'Маршрут нужно подготовить снова.'
+      }
+      if (message === 'Prepared.') {
+        return 'Подготовлено.'
+      }
+      const sourceMatch = /^Source is reachable with (\d+) discovered model\(s\)\.$/.exec(message)
+      if (sourceMatch?.[1]) {
+        return `Источник доступен, найдено моделей: ${sourceMatch[1]}.`
+      }
+      const prepareMatch = /^Route prepared via model discovery with (\d+) available model\(s\)\.$/.exec(
+        message,
+      )
+      if (prepareMatch?.[1]) {
+        return `Маршрут подготовлен через каталог моделей, доступно моделей: ${prepareMatch[1]}.`
+      }
+      return message
+    },
     routeState: 'Состояние маршрута',
     runDiagnostics: 'Диагностика запуска',
-    runDiagnosticsDescription: 'Подробный операторский вид выбранного сохраненного запуска провайдера.',
+    runDiagnosticsDescription: 'Подробности выбранного запуска провайдера.',
     runs: (count) => `${count} запусков`,
     saveChanges: 'Сохранить изменения',
     saving: 'Сохранение…',
     selectedProvider: 'Выбранный провайдер',
     shared: 'Общий',
     showingRuns: (visible, total, offset) =>
-      `Показано ${visible} из ${total} сохраненных запусков${offset > 0 ? ` со смещения ${offset}` : ''}.`,
+      `Показано ${visible} из ${total} сохранённых запусков${offset > 0 ? ` со смещения ${offset}` : ''}.`,
     started: 'Начато',
     status: 'Статус',
     statusFilter: 'Фильтр статуса',
     statuses: {
       all: 'Все статусы',
       authRequired: 'Нужен логин',
-      cancelled: 'Отменен',
-      cancelledOnly: 'Только отмененные',
-      disabled: 'Отключен',
+      cancelled: 'Отменён',
+      cancelledOnly: 'Только отменённые',
+      disabled: 'Выключен',
       failedOnly: 'Только ошибки',
       failing: 'С ошибками',
-      healthy: 'Здоров',
+      healthy: 'Работает',
       loginRequired: 'Нужен логин',
       modelUnavailable: 'Модель недоступна',
       needsAttention: 'Требует внимания',
@@ -380,18 +431,18 @@ export const agentProviderSettingsWidgetCopy: Record<AppLocale, AgentProviderSet
       unreachable: 'Недоступен',
     },
     suggestedRecovery: (label) => `Рекомендуемое восстановление: ${label}`,
-    title: 'Маршрутизация AI провайдеров',
-    titleEmbedded: 'AI / Провайдеры',
+    title: 'Провайдеры AI',
+    titleEmbedded: 'Провайдеры AI',
     totalDuration: 'Общая длительность',
     unknown: 'неизвестно',
     unknownUntilProbed: 'Неизвестно до проверки',
-    warmPolicy: 'Политика warm',
+    warmPolicy: 'Готовность',
     routeStats: (succeeded, total, averageDuration) =>
-      `${succeeded}/${total} ok · среднее ${averageDuration}`,
-    ttl: 'ttl',
-    warmTtl: 'Warm TTL (секунды)',
-    warmTtlHint: 'Как долго подготовленный маршрут считается warm до отметки stale.',
-    warmWindowEnds: (value) => `Warm окно закончится ${value}`,
+      `${succeeded}/${total} успешно · среднее ${averageDuration}`,
+    ttl: 'TTL',
+    warmTtl: 'Время готовности (секунды)',
+    warmTtlHint: 'Как долго подготовленный маршрут считается готовым.',
+    warmWindowEnds: (value) => `Готовность действует до ${value}`,
   },
   'zh-CN': {} as AgentProviderSettingsWidgetCopy,
   es: {} as AgentProviderSettingsWidgetCopy,
