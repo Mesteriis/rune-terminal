@@ -100,7 +100,7 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
   const renderCloseButton =
     panelCount > 1 ? (
       <IconButton
-        aria-label={`Close terminal tab for ${terminalPanelParams.title}`}
+        aria-label={copy.closeTerminalTabAria(terminalPanelParams.title)}
         onClick={handleCloseClick}
         onPointerDown={handleClosePointerDown}
         runaComponent="terminal-tab-close"

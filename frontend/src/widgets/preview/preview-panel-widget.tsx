@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
+import type { AppLocale } from '@/shared/api/runtime'
 import {
   openPreviewPathExternally,
   readPreviewFile,
@@ -27,9 +28,11 @@ import {
   previewPanelTitleStyle,
 } from './preview-panel-widget.styles'
 import { createPreviewTable } from './preview-table'
+import { previewPanelWidgetCopy } from './preview-panel-widget-copy'
 
 export type PreviewPanelWidgetProps = {
   connectionId?: string
+  locale?: AppLocale
   path: string
   title: string
   widgetId?: string
@@ -52,9 +55,9 @@ type PreviewPanelPathCopyState =
   | { status: 'success'; message: string }
   | { status: 'error'; message: string }
 
-function formatBytes(size?: number) {
+function formatBytes(size: number | undefined, unknownSizeLabel: string) {
   if (size == null) {
-    return 'unknown size'
+    return unknownSizeLabel
   }
 
   if (size < 1024) {
@@ -68,11 +71,21 @@ function formatBytes(size?: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function getPreviewKindLabel(snapshot: PreviewFileSnapshot) {
-  return snapshot.previewKind === 'hex' ? 'Hex preview' : 'Text preview'
+function getPreviewKindLabel(
+  snapshot: PreviewFileSnapshot,
+  copy: (typeof previewPanelWidgetCopy)[AppLocale],
+) {
+  return snapshot.previewKind === 'hex' ? copy.hexPreview : copy.textPreview
 }
 
-export function PreviewPanelWidget({ connectionId, path, title, widgetId }: PreviewPanelWidgetProps) {
+export function PreviewPanelWidget({
+  connectionId,
+  locale = 'en',
+  path,
+  title,
+  widgetId,
+}: PreviewPanelWidgetProps) {
+  const copy = previewPanelWidgetCopy[locale]
   const [refreshNonce, setRefreshNonce] = useState(0)
   const externalOpenRequestIdRef = useRef(0)
   const pathCopyRequestIdRef = useRef(0)
@@ -164,7 +177,8 @@ export function PreviewPanelWidget({ connectionId, path, title, widgetId }: Prev
       }
 
       setExternalOpenState({
-        message: 'Preview file open request sent to the system opener.',
+        message:
+          locale === 'en' ? 'Preview file open request sent to the system opener.' : copy.openFileExternally,
         status: 'success',
       })
     } catch (error) {
@@ -184,7 +198,7 @@ export function PreviewPanelWidget({ connectionId, path, title, widgetId }: Prev
 
     if (!containingFolderPath) {
       setExternalOpenState({
-        message: 'Containing folder is unavailable',
+        message: locale === 'en' ? 'Containing folder is unavailable' : copy.openContainingFolder,
         status: 'error',
       })
       return
@@ -205,7 +219,10 @@ export function PreviewPanelWidget({ connectionId, path, title, widgetId }: Prev
       }
 
       setExternalOpenState({
-        message: 'Preview containing folder open request sent to the system opener.',
+        message:
+          locale === 'en'
+            ? 'Preview containing folder open request sent to the system opener.'
+            : copy.openContainingFolder,
         status: 'success',
       })
     } catch (error) {
@@ -236,7 +253,7 @@ export function PreviewPanelWidget({ connectionId, path, title, widgetId }: Prev
       }
 
       setPathCopyState({
-        message: 'Copied preview file path to clipboard.',
+        message: copy.copiedPath,
         status: 'success',
       })
     } catch (error) {
@@ -258,13 +275,14 @@ export function PreviewPanelWidget({ connectionId, path, title, widgetId }: Prev
       : null
   const previewSummary =
     state.status === 'ready'
-      ? `${previewTable ? `${previewTable.delimiterLabel} table preview` : getPreviewKindLabel(state.snapshot)} · ${formatBytes(
+      ? `${previewTable ? copy.tablePreview(previewTable.delimiterLabel) : getPreviewKindLabel(state.snapshot, copy)} · ${formatBytes(
           state.snapshot.sizeBytes,
-        )}${state.snapshot.truncated ? ' · truncated' : ''}`
+          copy.unknownSize,
+        )}${state.snapshot.truncated ? ` · ${copy.truncated}` : ''}`
       : null
   const previewTableLimitLabel =
     previewTable?.truncatedColumns || previewTable?.truncatedRows
-      ? `Table preview is bounded to ${previewTable.rows.length} rows and ${previewTable.columns.length} columns.`
+      ? copy.tableLimit(previewTable.rows.length, previewTable.columns.length)
       : null
 
   return (
@@ -295,39 +313,39 @@ export function PreviewPanelWidget({ connectionId, path, title, widgetId }: Prev
         </Box>
         <Box runaComponent="preview-panel-actions" style={previewPanelHeaderActionsStyle}>
           <Button
-            aria-label="Open preview file externally"
+            aria-label={copy.openFileExternally}
             disabled={externalOpenState.status === 'pending'}
             onClick={() => void handleOpenExternally()}
             runaComponent="preview-panel-open-external"
             style={previewPanelRefreshButtonStyle}
           >
-            {externalOpenState.status === 'pending' ? 'Opening...' : 'Open file'}
+            {externalOpenState.status === 'pending' ? copy.opening : copy.openFile}
           </Button>
           <Button
-            aria-label="Open preview containing folder externally"
+            aria-label={copy.openContainingFolder}
             disabled={externalOpenState.status === 'pending' || !containingFolderPath}
             onClick={() => void handleOpenContainingFolder()}
             runaComponent="preview-panel-open-containing-folder"
             style={previewPanelRefreshButtonStyle}
           >
-            Folder
+            {copy.folder}
           </Button>
           <Button
-            aria-label="Copy preview file path"
+            aria-label={copy.copyPath}
             disabled={pathCopyState.status === 'pending'}
             onClick={() => void handleCopyPath()}
             runaComponent="preview-panel-copy-path"
             style={previewPanelRefreshButtonStyle}
           >
-            {pathCopyState.status === 'pending' ? 'Copying...' : 'Copy path'}
+            {pathCopyState.status === 'pending' ? copy.copying : copy.copyPath}
           </Button>
           <Button
-            aria-label="Refresh preview"
+            aria-label={copy.refreshPreview}
             onClick={() => setRefreshNonce((value) => value + 1)}
             runaComponent="preview-panel-refresh"
             style={previewPanelRefreshButtonStyle}
           >
-            Refresh
+            {copy.refresh}
           </Button>
         </Box>
       </Box>
@@ -335,7 +353,7 @@ export function PreviewPanelWidget({ connectionId, path, title, widgetId }: Prev
         <Box runaComponent="preview-panel-body-inner" style={previewPanelBodyInnerStyle}>
           {state.status === 'loading' ? (
             <Text runaComponent="preview-panel-loading" style={previewPanelStateStyle}>
-              Loading preview
+              {copy.loading}
             </Text>
           ) : null}
           {state.status === 'error' ? (
@@ -386,7 +404,7 @@ export function PreviewPanelWidget({ connectionId, path, title, widgetId }: Prev
               </pre>
             ) : (
               <Text runaComponent="preview-panel-empty" style={previewPanelStateStyle}>
-                Preview is empty
+                {copy.empty}
               </Text>
             )
           ) : null}

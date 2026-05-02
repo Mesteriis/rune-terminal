@@ -3,6 +3,7 @@ import { useRef } from 'react'
 import { useUnit } from 'effector-react'
 
 import { useWorkspaceWidgetCatalog } from '@/features/workspace/model/widget-catalog'
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import {
   closeRuntimeWindow,
   minimizeRuntimeWindow,
@@ -24,6 +25,7 @@ import {
   TerminalDockviewTabWidget,
 } from '@/widgets'
 import { AppAiSidebar } from './app-ai-sidebar'
+import { appShellCopy } from './app-shell-copy'
 import {
   contentAreaStyle,
   dockviewContainerStyle,
@@ -56,6 +58,8 @@ const tabComponents = {
 /** Composes the shell topbar, Dockview workspace, AI sidebar, and modal hosts. */
 export function App() {
   const [isAiSidebarOpen, onToggleAiSidebar] = useUnit([$isAiSidebarOpen, toggleAiSidebar])
+  const { locale } = useAppLocale()
+  const copy = appShellCopy[locale]
   const widgetCatalog = useWorkspaceWidgetCatalog()
   const windowTitleSettings = useWindowTitleSettings()
   const contentAreaRef = useRef<HTMLDivElement | null>(null)
@@ -128,6 +132,7 @@ export function App() {
           <ShellTopbarWidget
             activeWorkspaceId={activeWorkspaceId}
             isAiOpen={isAiSidebarOpen}
+            locale={locale}
             onClose={handleCloseWindow}
             onMinimize={handleMinimizeWindow}
             onAddWorkspace={handleAddWorkspace}
@@ -152,12 +157,14 @@ export function App() {
               >
                 {widgetCatalog.status === 'loading' ? (
                   <Box
-                    aria-label="Loading workspace widget catalog"
+                    aria-label={copy.loadingWidgetCatalogAria}
                     role="status"
                     runaComponent="workspace-widget-catalog-loading"
                     style={workspaceCatalogStatusStyle}
                   >
-                    <Text runaComponent="workspace-widget-catalog-loading-text">Loading widget catalog</Text>
+                    <Text runaComponent="workspace-widget-catalog-loading-text">
+                      {copy.loadingWidgetCatalog}
+                    </Text>
                   </Box>
                 ) : (
                   <DockviewReact
@@ -174,6 +181,7 @@ export function App() {
         </Box>
         <RightActionRailWidget
           dockviewApiRef={dockviewApiRef}
+          locale={locale}
           onAddWorkspace={handleAddWorkspace}
           widgetCatalog={widgetCatalog}
         />

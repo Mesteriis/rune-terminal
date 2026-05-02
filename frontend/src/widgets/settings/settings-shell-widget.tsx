@@ -453,6 +453,11 @@ function CommanderSection() {
   )
 }
 
+function AIAppsSection() {
+  const { locale } = useAppLocale()
+  return <AgentProviderSettingsWidget embedded locale={locale} />
+}
+
 function PluginsSection() {
   return <PluginsSettingsSection />
 }
@@ -462,7 +467,7 @@ function renderSection(sectionID: SettingsSectionID) {
     case 'general':
       return <GeneralSection />
     case 'ai-apps':
-      return <AgentProviderSettingsWidget embedded />
+      return <AIAppsSection />
     case 'ai-models':
       return <AiModelsSection />
     case 'ai-composer':

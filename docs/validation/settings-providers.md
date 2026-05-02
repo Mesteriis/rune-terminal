@@ -161,6 +161,11 @@
   - switching provider updates visible model choices to that provider's `chat_models`
 - `AI > Composer` settings now read the shortcut labels, descriptions, and runtime badges from the app locale table for `en`, `ru`, `zh-CN`, and `es`; this is presentation-only and keeps the same runtime-backed composer preference contract.
 - The runtime settings subsections for Plugins, Remote profiles, and MCP now read their visible form/list/status chrome from locale tables for `en`, `ru`, `zh-CN`, and `es`. The validation pass for this settings slice ran `npm --prefix frontend run lint:active`; backend-provided endpoint names, template descriptions, raw server status values, and error payloads remain data and are not translated in the client.
+- The remaining active shell/settings chrome now reads visible labels from locale tables for `en`, `ru`, `zh-CN`, and `es`: shell topbar, right action rail, AI provider settings, Files, Preview, Commander pane headers/status, workspace widget catalog loading, and terminal dock/header input labels. Validation for this localization sweep:
+  - RED pass confirmed missing Russian labels in shell topbar, right rail, AI provider settings, Files, and Preview.
+  - Focused Vitest pass: `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx src/widgets/terminal/terminal-dockview-tab-widget.test.tsx src/widgets/terminal/terminal-widget.test.tsx src/widgets/shell/shell-topbar-widget.test.tsx src/widgets/shell/right-action-rail-widget.test.tsx src/widgets/settings/agent-provider-settings-widget.test.tsx src/widgets/files/files-panel-widget.test.tsx src/widgets/preview/preview-panel-widget.test.tsx`.
+  - Typecheck: `npm --prefix frontend run lint:active`.
+  - Browser smoke on `http://127.0.0.1:5173/` verified Russian shell topbar/right rail and terminal header/input labels and checked that `Add terminal tab for`, `Close Main Shell`, and `Terminal input` no longer appear in the current DOM snapshot.
 - The OpenAI-compatible browser validation in this pass used the live LAN source:
   - `base_url: http://192.168.1.8:8317`
   - verified model discovery from `/v1/models`

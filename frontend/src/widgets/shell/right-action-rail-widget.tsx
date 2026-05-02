@@ -4,6 +4,7 @@ import { useUnit } from 'effector-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { resolveRuntimeContext } from '@/shared/api/runtime'
+import type { AppLocale } from '@/shared/api/runtime'
 import { openDirectoryWorkspaceWidget } from '@/shared/api/workspace'
 import { openBodyModal } from '@/shared/model/modal'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
@@ -27,6 +28,7 @@ import {
   utilityMenuTitleStyle,
   utilityMenuWrapStyle,
 } from '@/widgets/shell/right-action-rail-widget.styles'
+import { rightActionRailWidgetCopy } from '@/widgets/shell/right-action-rail-widget-copy'
 import {
   createNextTerminalPanelId,
   createTerminalPanelParams,
@@ -42,38 +44,43 @@ const railIconProps = {
 
 type RightActionRailWidgetProps = {
   dockviewApiRef: { current: DockviewApi | null }
+  locale?: AppLocale
   onAddWorkspace: () => void
   widgetCatalog: WorkspaceWidgetCatalogState
 }
 
-function getUnavailableWidgetReason(kind: string, widgetCatalog: WorkspaceWidgetCatalogState) {
+function getUnavailableWidgetReason(
+  kind: string,
+  widgetCatalog: WorkspaceWidgetCatalogState,
+  copy: (typeof rightActionRailWidgetCopy)[AppLocale],
+) {
   if (widgetCatalog.status === 'loading') {
-    return 'Loading catalog'
+    return copy.loadingCatalog
   }
 
   if (widgetCatalog.status === 'error') {
-    return widgetCatalog.errorMessage ?? 'Catalog unavailable'
+    return widgetCatalog.errorMessage ?? copy.catalogUnavailable
   }
 
   const entry = getWorkspaceWidgetKindEntry(widgetCatalog.entries, kind)
 
   if (!entry) {
-    return 'Not reported by backend'
+    return copy.notReportedByBackend
   }
 
   if (entry.status === 'planned') {
-    return 'Planned'
+    return copy.planned
   }
 
   if (entry.status === 'frontend-local') {
-    return 'Frontend-local'
+    return copy.frontendLocal
   }
 
   if (entry.status === 'available' && entry.supports_path && !entry.can_create) {
-    return 'Needs file path'
+    return copy.needsFilePath
   }
 
-  return 'Unavailable'
+  return copy.unavailable
 }
 
 function getPathTitle(path: string) {
@@ -85,9 +92,11 @@ function getPathTitle(path: string) {
 
 export function RightActionRailWidget({
   dockviewApiRef,
+  locale = 'en',
   onAddWorkspace,
   widgetCatalog,
 }: RightActionRailWidgetProps) {
+  const copy = rightActionRailWidgetCopy[locale]
   const onOpenBodyModal = useUnit(openBodyModal)
   const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState(false)
   const menuWrapRef = useRef<HTMLDivElement | null>(null)
@@ -245,7 +254,7 @@ export function RightActionRailWidget({
     <RunaDomScopeProvider component="right-action-rail-widget">
       <Box
         role="complementary"
-        aria-label="Right action rail"
+        aria-label={copy.rightActionRail}
         runaComponent="right-action-rail-root"
         style={rightRailStyle}
       >
@@ -257,12 +266,12 @@ export function RightActionRailWidget({
           {isUtilityMenuOpen ? (
             <Surface
               role="menu"
-              aria-label="Create widget menu"
+              aria-label={copy.createWidgetMenu}
               runaComponent="right-action-rail-utility-menu"
               style={utilityMenuStyle}
             >
               <Button
-                aria-label="Create workspace"
+                aria-label={copy.createWorkspace}
                 onClick={handleCreateWorkspace}
                 runaComponent="right-action-rail-create-workspace"
                 role="menuitem"
@@ -274,7 +283,7 @@ export function RightActionRailWidget({
                     runaComponent="right-action-rail-create-workspace-title"
                     style={utilityMenuTitleStyle}
                   >
-                    Workspace
+                    {copy.workspaceTitle}
                   </Text>
                 </Box>
               </Button>
@@ -287,11 +296,11 @@ export function RightActionRailWidget({
                 <Button
                   aria-label={
                     canCreateTerminal
-                      ? `Create ${terminalEntry.label} widget`
-                      : `${terminalEntry.label} widget unavailable: ${getUnavailableWidgetReason(
-                          'terminal',
-                          widgetCatalog,
-                        )}`
+                      ? copy.createWidget(terminalEntry.label)
+                      : copy.unavailableWidget(
+                          terminalEntry.label,
+                          getUnavailableWidgetReason('terminal', widgetCatalog, copy),
+                        )
                   }
                   disabled={!canCreateTerminal}
                   onClick={handleCreateTerminalWidget}
@@ -312,7 +321,7 @@ export function RightActionRailWidget({
                         runaComponent="right-action-rail-create-terminal-status"
                         style={utilityMenuStatusTextStyle}
                       >
-                        {getUnavailableWidgetReason('terminal', widgetCatalog)}
+                        {getUnavailableWidgetReason('terminal', widgetCatalog, copy)}
                       </Text>
                     ) : null}
                   </Box>
@@ -322,11 +331,11 @@ export function RightActionRailWidget({
                 <Button
                   aria-label={
                     canCreateFiles
-                      ? `Create ${filesEntry.label} widget`
-                      : `${filesEntry.label} widget unavailable: ${getUnavailableWidgetReason(
-                          'files',
-                          widgetCatalog,
-                        )}`
+                      ? copy.createWidget(filesEntry.label)
+                      : copy.unavailableWidget(
+                          filesEntry.label,
+                          getUnavailableWidgetReason('files', widgetCatalog, copy),
+                        )
                   }
                   disabled={!canCreateFiles}
                   onClick={handleCreateFilesWidget}
@@ -344,7 +353,7 @@ export function RightActionRailWidget({
                         runaComponent="right-action-rail-create-files-status"
                         style={utilityMenuStatusTextStyle}
                       >
-                        {getUnavailableWidgetReason('files', widgetCatalog)}
+                        {getUnavailableWidgetReason('files', widgetCatalog, copy)}
                       </Text>
                     ) : null}
                   </Box>
@@ -360,11 +369,11 @@ export function RightActionRailWidget({
                 <Button
                   aria-label={
                     canCreateCommander
-                      ? `Create ${commanderEntry.label} widget`
-                      : `${commanderEntry.label} widget unavailable: ${getUnavailableWidgetReason(
-                          'commander',
-                          widgetCatalog,
-                        )}`
+                      ? copy.createWidget(commanderEntry.label)
+                      : copy.unavailableWidget(
+                          commanderEntry.label,
+                          getUnavailableWidgetReason('commander', widgetCatalog, copy),
+                        )
                   }
                   disabled={!canCreateCommander}
                   runaComponent="right-action-rail-create-commander"
@@ -384,7 +393,7 @@ export function RightActionRailWidget({
                         runaComponent="right-action-rail-create-commander-status"
                         style={utilityMenuStatusTextStyle}
                       >
-                        {getUnavailableWidgetReason('commander', widgetCatalog)}
+                        {getUnavailableWidgetReason('commander', widgetCatalog, copy)}
                       </Text>
                     ) : null}
                   </Box>
@@ -392,10 +401,10 @@ export function RightActionRailWidget({
               ) : null}
               {previewEntry ? (
                 <Button
-                  aria-label={`${previewEntry.label} widget unavailable: ${getUnavailableWidgetReason(
-                    'preview',
-                    widgetCatalog,
-                  )}`}
+                  aria-label={copy.unavailableWidget(
+                    previewEntry.label,
+                    getUnavailableWidgetReason('preview', widgetCatalog, copy),
+                  )}
                   disabled
                   runaComponent="right-action-rail-create-preview"
                   role="menuitem"
@@ -413,17 +422,17 @@ export function RightActionRailWidget({
                       runaComponent="right-action-rail-create-preview-status"
                       style={utilityMenuStatusTextStyle}
                     >
-                      {getUnavailableWidgetReason('preview', widgetCatalog)}
+                      {getUnavailableWidgetReason('preview', widgetCatalog, copy)}
                     </Text>
                   </Box>
                 </Button>
               ) : null}
               {editorEntry ? (
                 <Button
-                  aria-label={`${editorEntry.label} widget unavailable: ${getUnavailableWidgetReason(
-                    'editor',
-                    widgetCatalog,
-                  )}`}
+                  aria-label={copy.unavailableWidget(
+                    editorEntry.label,
+                    getUnavailableWidgetReason('editor', widgetCatalog, copy),
+                  )}
                   disabled
                   runaComponent="right-action-rail-create-editor"
                   role="menuitem"
@@ -438,17 +447,17 @@ export function RightActionRailWidget({
                       runaComponent="right-action-rail-create-editor-status"
                       style={utilityMenuStatusTextStyle}
                     >
-                      {getUnavailableWidgetReason('editor', widgetCatalog)}
+                      {getUnavailableWidgetReason('editor', widgetCatalog, copy)}
                     </Text>
                   </Box>
                 </Button>
               ) : null}
               {webEntry ? (
                 <Button
-                  aria-label={`${webEntry.label} widget unavailable: ${getUnavailableWidgetReason(
-                    'web',
-                    widgetCatalog,
-                  )}`}
+                  aria-label={copy.unavailableWidget(
+                    webEntry.label,
+                    getUnavailableWidgetReason('web', widgetCatalog, copy),
+                  )}
                   disabled
                   runaComponent="right-action-rail-create-web"
                   role="menuitem"
@@ -463,7 +472,7 @@ export function RightActionRailWidget({
                       runaComponent="right-action-rail-create-web-status"
                       style={utilityMenuStatusTextStyle}
                     >
-                      {getUnavailableWidgetReason('web', widgetCatalog)}
+                      {getUnavailableWidgetReason('web', widgetCatalog, copy)}
                     </Text>
                   </Box>
                 </Button>
@@ -473,7 +482,7 @@ export function RightActionRailWidget({
           <Button
             aria-expanded={isUtilityMenuOpen}
             aria-haspopup="menu"
-            aria-label="Open utility panel"
+            aria-label={copy.openUtilityPanel}
             onClick={handleToggleUtilityMenu}
             runaComponent="right-action-rail-open-utility-panel"
             style={railButtonStyle}
@@ -482,12 +491,12 @@ export function RightActionRailWidget({
           </Button>
         </Box>
         <Button
-          aria-label="Open settings panel"
+          aria-label={copy.openSettingsPanel}
           runaComponent="right-action-rail-open-settings-panel"
           onClick={() =>
             onOpenBodyModal({
-              title: 'Settings',
-              description: 'Navigate shell settings by section: General, AI, Terminal, and Commander.',
+              title: copy.settingsTitle,
+              description: copy.settingsDescription,
               variant: 'settings',
               contentKey: 'settings-shell',
             })

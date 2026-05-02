@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 
+import type { AppLocale } from '@/shared/api/runtime'
 import type {
   AgentProviderGatewayProvider,
   AgentProviderGatewayRun,
@@ -40,6 +41,10 @@ import {
   providerSettingsToolbarMetaStyle,
   providerSettingsToolbarStyle,
 } from '@/widgets/settings/agent-provider-settings-widget.styles'
+import {
+  agentProviderSettingsWidgetCopy,
+  type AgentProviderSettingsWidgetCopy,
+} from '@/widgets/settings/agent-provider-settings-widget-copy'
 
 const kindLabels: Record<AgentProviderKind, string> = {
   codex: 'Codex CLI',
@@ -91,6 +96,7 @@ function ModelSelectField({
   isRefreshing,
   hint,
   errorMessage,
+  copy,
 }: {
   label: string
   value: string
@@ -100,6 +106,7 @@ function ModelSelectField({
   isRefreshing: boolean
   hint?: string
   errorMessage?: string | null
+  copy: AgentProviderSettingsWidgetCopy
 }) {
   const fieldID = useId()
   const options = Array.from(new Set([value.trim(), ...models.map((model) => model.trim())].filter(Boolean)))
@@ -121,7 +128,7 @@ function ModelSelectField({
           style={{ flex: 1, minWidth: '14rem' }}
           value={value}
         >
-          {options.length === 0 ? <option value="">No models loaded</option> : null}
+          {options.length === 0 ? <option value="">{copy.noModelsLoaded}</option> : null}
           {options.map((model) => (
             <option key={model} value={model}>
               {model}
@@ -129,7 +136,7 @@ function ModelSelectField({
           ))}
         </Select>
         <Button disabled={isRefreshing} onClick={onRefresh}>
-          {isRefreshing ? 'Loading…' : 'Refresh'}
+          {isRefreshing ? copy.loadingModels : copy.refresh}
         </Button>
       </ClearBox>
       {errorMessage ? <Text style={providerSettingsErrorMessageStyle}>{errorMessage}</Text> : null}
@@ -145,35 +152,35 @@ function updateDraftField(
   setDraft((currentDraft) => (currentDraft ? updater(currentDraft) : currentDraft))
 }
 
-function formatCLIStatus(state?: string) {
+function formatCLIStatus(state: string | undefined, copy: AgentProviderSettingsWidgetCopy) {
   switch (state) {
     case 'ready':
-      return 'Route ready'
+      return copy.statuses.routeReady
     case 'auth-required':
-      return 'Login required'
+      return copy.statuses.loginRequired
     case 'disabled':
-      return 'Disabled'
+      return copy.statuses.disabled
     case 'unchecked':
-      return 'Unchecked'
+      return copy.statuses.unchecked
     case 'unreachable':
-      return 'Unreachable'
+      return copy.statuses.unreachable
     case 'model-unavailable':
-      return 'Model unavailable'
+      return copy.statuses.modelUnavailable
     default:
-      return 'Needs attention'
+      return copy.statuses.needsAttention
   }
 }
 
-function formatGatewayStatus(status?: string) {
+function formatGatewayStatus(status: string | undefined, copy: AgentProviderSettingsWidgetCopy) {
   switch (status) {
     case 'succeeded':
-      return 'Healthy'
+      return copy.statuses.healthy
     case 'failed':
-      return 'Failing'
+      return copy.statuses.failing
     case 'cancelled':
-      return 'Cancelled'
+      return copy.statuses.cancelled
     default:
-      return 'No runs yet'
+      return copy.statuses.noRuns
   }
 }
 
@@ -187,13 +194,13 @@ function formatDuration(durationMS?: number) {
   return `${durationMS}ms`
 }
 
-function formatRunTimestamp(value?: string) {
+function formatRunTimestamp(value: string | undefined, copy: AgentProviderSettingsWidgetCopy) {
   if (!value) {
-    return 'n/a'
+    return copy.unknown
   }
   const timestamp = new Date(value)
   if (Number.isNaN(timestamp.getTime())) {
-    return 'n/a'
+    return copy.unknown
   }
   return timestamp.toLocaleString()
 }
@@ -208,7 +215,14 @@ function routeStatusForProvider(
   return gateway.find((provider) => provider.provider_id === providerID) ?? null
 }
 
-export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: boolean }) {
+export function AgentProviderSettingsWidget({
+  embedded = false,
+  locale = 'en',
+}: {
+  embedded?: boolean
+  locale?: AppLocale
+}) {
+  const copy = agentProviderSettingsWidgetCopy[locale]
   const {
     availableModels,
     catalog,
@@ -276,13 +290,9 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
             runaComponent="agent-provider-settings-toolbar-meta"
             style={providerSettingsToolbarMetaStyle}
           >
-            <Text style={{ fontWeight: 600 }}>
-              {embedded ? 'AI / Установленные приложения' : 'AI provider routing'}
-            </Text>
+            <Text style={{ fontWeight: 600 }}>{embedded ? copy.titleEmbedded : copy.title}</Text>
             <Text style={providerSettingsStatusMessageStyle}>
-              {embedded
-                ? 'Подключай CLI providers для чата и управляй активным runtime без лишних переходов между settings sections.'
-                : 'Manage local Codex CLI and Claude Code CLI routing without leaving the shell modal.'}
+              {embedded ? copy.descriptionEmbedded : copy.description}
             </Text>
           </ClearBox>
           <ClearBox
@@ -291,7 +301,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
           >
             {supportedKinds.map((kind) => (
               <Button key={kind} onClick={() => startCreateProvider(kind)}>
-                Add {kindLabels[kind]}
+                {copy.addProvider(kindLabels[kind])}
               </Button>
             ))}
           </ClearBox>
@@ -299,7 +309,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
 
         <ClearBox runaComponent="agent-provider-settings-body" style={bodyStyle}>
           <ClearBox runaComponent="agent-provider-settings-sidebar" style={sidebarStyle}>
-            <Text style={{ fontWeight: 600 }}>Configured providers</Text>
+            <Text style={{ fontWeight: 600 }}>{copy.configuredProviders}</Text>
             <ScrollArea runaComponent="agent-provider-settings-list" style={providerSettingsListStyle}>
               {catalog?.providers.map((provider) => {
                 const isSelected = provider.id === selectedProviderID
@@ -327,7 +337,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         {provider.display_name || kindLabels[provider.kind]}
                       </Text>
                       <Text style={providerSettingsStatusMessageStyle}>
-                        {provider.active ? 'Active' : provider.enabled ? 'Ready' : 'Disabled'}
+                        {provider.active ? copy.active : provider.enabled ? copy.ready : copy.disabled}
                       </Text>
                     </ClearBox>
                     <Text style={providerSettingsStatusMessageStyle}>{kindLabels[provider.kind]}</Text>
@@ -336,6 +346,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         {provider.codex?.model} ·{' '}
                         {formatCLIStatus(
                           routeStatusForProvider(provider.id, gateway?.providers ?? null)?.route_status_state,
+                          copy,
                         )}
                       </Text>
                     ) : provider.kind === 'claude' ? (
@@ -343,6 +354,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         {provider.claude?.model} ·{' '}
                         {formatCLIStatus(
                           routeStatusForProvider(provider.id, gateway?.providers ?? null)?.route_status_state,
+                          copy,
                         )}
                       </Text>
                     ) : provider.kind === 'openai-compatible' ? (
@@ -361,7 +373,11 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           if (!gatewayEntry) {
                             return ''
                           }
-                          return `${formatGatewayStatus(gatewayEntry.last_status)} · ${gatewayEntry.succeeded_runs}/${gatewayEntry.total_runs} ok · avg ${formatDuration(gatewayEntry.average_duration_ms)}`
+                          return `${formatGatewayStatus(gatewayEntry.last_status, copy)} · ${copy.routeStats(
+                            gatewayEntry.succeeded_runs,
+                            gatewayEntry.total_runs,
+                            formatDuration(gatewayEntry.average_duration_ms),
+                          )}`
                         })()}
                       </Text>
                     ) : null}
@@ -369,9 +385,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                 )
               })}
               {!catalog?.providers.length ? (
-                <Text style={providerSettingsStatusMessageStyle}>
-                  No providers are available yet. Create one from the toolbar above.
-                </Text>
+                <Text style={providerSettingsStatusMessageStyle}>{copy.noProviders}</Text>
               ) : null}
             </ScrollArea>
           </ClearBox>
@@ -379,13 +393,13 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
           <ClearBox runaComponent="agent-provider-settings-editor" style={editorStyle}>
             {!draft ? (
               <ClearBox style={providerSettingsSectionHeaderStyle}>
-                <Text style={{ fontWeight: 600 }}>No provider selected</Text>
+                <Text style={{ fontWeight: 600 }}>{copy.noProviderSelected}</Text>
                 <Text
                   style={
                     errorMessage ? providerSettingsErrorMessageStyle : providerSettingsStatusMessageStyle
                   }
                 >
-                  {errorMessage ?? 'Choose an existing provider on the left or create a new one.'}
+                  {errorMessage ?? copy.chooseProvider}
                 </Text>
               </ClearBox>
             ) : (
@@ -397,27 +411,28 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                   <ClearBox style={providerSettingsSectionStyle}>
                     <ClearBox style={providerSettingsSectionHeaderStyle}>
                       <Text style={{ fontWeight: 600 }}>
-                        {draft.mode === 'new' ? 'New provider' : draft.displayName || kindLabels[draft.kind]}
+                        {draft.mode === 'new'
+                          ? copy.createProvider
+                          : draft.displayName || kindLabels[draft.kind]}
                       </Text>
                       <Text style={providerSettingsStatusMessageStyle}>
-                        Kind: {kindLabels[draft.kind]}
-                        {selectedProvider?.active ? ' · currently active' : ''}
+                        {copy.kind(kindLabels[draft.kind], Boolean(selectedProvider?.active))}
                       </Text>
                     </ClearBox>
                     <ClearBox style={providerSettingsGridStyle}>
                       <TextInputField
-                        label="Display name"
+                        label={copy.displayName}
                         onChange={(value) =>
                           updateDraftField(setDraft, (currentDraft) => ({
                             ...currentDraft,
                             displayName: value,
                           }))
                         }
-                        placeholder="Provider display name"
+                        placeholder={copy.displayNamePlaceholder}
                         value={draft.displayName}
                       />
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label htmlFor="provider-enabled-toggle">Provider status</Label>
+                        <Label htmlFor="provider-enabled-toggle">{copy.providerStatus}</Label>
                         <ClearBox style={providerSettingsInlineCheckboxStyle}>
                           <Checkbox
                             checked={draft.enabled}
@@ -429,17 +444,15 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                               }))
                             }
                           />
-                          <Text>Enabled</Text>
+                          <Text>{copy.ready}</Text>
                         </ClearBox>
-                        <Text style={providerSettingsStatusMessageStyle}>
-                          Disabled providers stay in the catalog but cannot become active.
-                        </Text>
+                        <Text style={providerSettingsStatusMessageStyle}>{copy.disabledProviderHint}</Text>
                       </ClearBox>
                     </ClearBox>
                     <ClearBox style={providerSettingsGridStyle}>
                       <TextInputField
-                        hint="Future-ready ownership metadata for provider governance."
-                        label="Owner username"
+                        hint={copy.ownerHint}
+                        label={copy.ownerUsername}
                         onChange={(value) =>
                           updateDraftField(setDraft, (currentDraft) => ({
                             ...currentDraft,
@@ -450,7 +463,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         value={draft.ownerUsername}
                       />
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label htmlFor="provider-visibility-select">Provider visibility</Label>
+                        <Label htmlFor="provider-visibility-select">{copy.providerVisibility}</Label>
                         <Select
                           id="provider-visibility-select"
                           onChange={(event) =>
@@ -461,16 +474,16 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           }
                           value={draft.visibility}
                         >
-                          <option value="private">Private</option>
-                          <option value="shared">Shared</option>
+                          <option value="private">{copy.private}</option>
+                          <option value="shared">{copy.shared}</option>
                         </Select>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          Current actor: {catalog?.current_actor.username || 'unknown'}
+                          {copy.currentActor(catalog?.current_actor.username || copy.unknown)}
                         </Text>
                       </ClearBox>
                       <TextInputField
-                        hint="Comma-separated usernames for future shared-provider access control."
-                        label="Allowed users"
+                        hint={copy.allowedUsersHint}
+                        label={copy.allowedUsers}
                         onChange={(value) =>
                           updateDraftField(setDraft, (currentDraft) => ({
                             ...currentDraft,
@@ -483,66 +496,66 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                     </ClearBox>
                     {selectedProvider ? (
                       <Text style={providerSettingsStatusMessageStyle}>
-                        Created by {selectedProvider.created_by.username || 'unknown'} · updated by{' '}
-                        {selectedProvider.updated_by.username || 'unknown'}
+                        {copy.createdUpdated(
+                          selectedProvider.created_by.username || copy.unknown,
+                          selectedProvider.updated_by.username || copy.unknown,
+                        )}
                       </Text>
                     ) : null}
                   </ClearBox>
 
                   <ClearBox style={providerSettingsSectionStyle}>
                     <ClearBox style={providerSettingsSectionHeaderStyle}>
-                      <Text style={{ fontWeight: 600 }}>Gateway signals</Text>
-                      <Text style={providerSettingsStatusMessageStyle}>
-                        Backend-owned recent run history and health signals for the active provider route.
-                      </Text>
+                      <Text style={{ fontWeight: 600 }}>{copy.gatewaySignals}</Text>
+                      <Text style={providerSettingsStatusMessageStyle}>{copy.gatewaySignalsDescription}</Text>
                     </ClearBox>
                     <ClearBox style={providerSettingsGridStyle}>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label>Current status</Label>
+                        <Label>{copy.currentStatus}</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          {formatCLIStatus(selectedGatewayProvider?.route_status_state)}
+                          {formatCLIStatus(selectedGatewayProvider?.route_status_state, copy)}
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label>Average latency</Label>
+                        <Label>{copy.averageLatency}</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
                           {formatDuration(selectedGatewayProvider?.average_duration_ms)}
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label>First response</Label>
+                        <Label>{copy.firstResponse}</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
                           {formatDuration(selectedGatewayProvider?.last_first_response_latency_ms)}
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label>Route checked</Label>
+                        <Label>{copy.routeChecked}</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          {formatRunTimestamp(selectedGatewayProvider?.route_checked_at)}
+                          {formatRunTimestamp(selectedGatewayProvider?.route_checked_at, copy)}
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label>Probe latency</Label>
+                        <Label>{copy.probeLatency}</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
                           {formatDuration(selectedGatewayProvider?.route_latency_ms)}
                         </Text>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label>Warm policy</Label>
+                        <Label>{copy.warmPolicy}</Label>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          {selectedGatewayProvider?.route_prewarm_policy || draft.prewarmPolicy} · ttl{' '}
+                          {selectedGatewayProvider?.route_prewarm_policy || draft.prewarmPolicy} · {copy.ttl}{' '}
                           {selectedGatewayProvider?.route_warm_ttl_seconds || draft.warmTTLSeconds}s
                         </Text>
                       </ClearBox>
                     </ClearBox>
                     {gatewayErrorMessage ? (
                       <Text style={providerSettingsErrorMessageStyle}>
-                        Gateway telemetry is unavailable: {gatewayErrorMessage}
+                        {copy.gatewayTelemetryUnavailable(gatewayErrorMessage)}
                       </Text>
                     ) : null}
                     {selectedGatewayProvider?.last_error_message ? (
                       <Text style={providerSettingsErrorMessageStyle}>
-                        Last error
+                        {copy.lastError}
                         {formatProviderGatewayErrorCode(selectedGatewayProvider.last_error_code)
                           ? ` (${formatProviderGatewayErrorCode(selectedGatewayProvider.last_error_code)})`
                           : ''}
@@ -562,8 +575,9 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                             : providerSettingsStatusMessageStyle
                         }
                       >
-                        Warm window ends{' '}
-                        {formatRunTimestamp(selectedGatewayProvider.route_prepare_expires_at)}
+                        {copy.warmWindowEnds(
+                          formatRunTimestamp(selectedGatewayProvider.route_prepare_expires_at, copy),
+                        )}
                       </Text>
                     ) : null}
                     {selectedGatewayProvider?.route_status_message ? (
@@ -576,26 +590,26 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         disabled={isSaving || isProbing || draft.mode !== 'existing'}
                         onClick={() => void probeSelectedProvider()}
                       >
-                        {isProbing ? 'Probing…' : 'Probe provider route'}
+                        {isProbing ? copy.probing : copy.probeProviderRoute}
                       </Button>
                       {selectedGatewayRecoveryAction?.kind === 'prepare' ? (
                         <Button
                           disabled={isSaving || isPreparing || draft.mode !== 'existing'}
                           onClick={() => void prewarmSelectedProvider()}
                         >
-                          {isPreparing ? 'Preparing…' : selectedGatewayRecoveryAction.label}
+                          {isPreparing ? copy.preparing : selectedGatewayRecoveryAction.label}
                         </Button>
                       ) : null}
                       <Button
                         disabled={isSaving || isPreparing || draft.mode !== 'existing'}
                         onClick={() => void clearSelectedProviderRouteState()}
                       >
-                        Clear route state
+                        {copy.clearRouteState}
                       </Button>
                       {selectedGatewayRecoveryAction?.kind === 'probe' &&
                       selectedGatewayRecoveryAction.label !== 'Probe route' ? (
                         <Text style={providerSettingsStatusMessageStyle}>
-                          Suggested recovery: {selectedGatewayRecoveryAction.label}
+                          {copy.suggestedRecovery(selectedGatewayRecoveryAction.label)}
                         </Text>
                       ) : null}
                     </ClearBox>
@@ -606,14 +620,12 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
 
                   <ClearBox style={providerSettingsSectionStyle}>
                     <ClearBox style={providerSettingsSectionHeaderStyle}>
-                      <Text style={{ fontWeight: 600 }}>Route policy</Text>
-                      <Text style={providerSettingsStatusMessageStyle}>
-                        Backend-owned prewarm behavior and warm TTL for the selected provider route.
-                      </Text>
+                      <Text style={{ fontWeight: 600 }}>{copy.routePolicy}</Text>
+                      <Text style={providerSettingsStatusMessageStyle}>{copy.prewarmSectionDescription}</Text>
                     </ClearBox>
                     <ClearBox style={providerSettingsGridStyle}>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label htmlFor="provider-prewarm-policy">Prewarm policy</Label>
+                        <Label htmlFor="provider-prewarm-policy">{copy.prewarmPolicy}</Label>
                         <Select
                           id="provider-prewarm-policy"
                           onChange={(event) =>
@@ -627,14 +639,14 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           }
                           value={draft.prewarmPolicy}
                         >
-                          <option value="manual">Manual only</option>
-                          <option value="on_activate">Prepare on activate</option>
-                          <option value="on_startup">Prepare on app start</option>
+                          <option value="manual">{copy.manualOnly}</option>
+                          <option value="on_activate">{copy.prepareOnActivate}</option>
+                          <option value="on_startup">{copy.prepareOnAppStart}</option>
                         </Select>
                       </ClearBox>
                       <TextInputField
-                        hint="How long a prepared route is treated as warm before the shell marks it stale."
-                        label="Warm TTL (seconds)"
+                        hint={copy.warmTtlHint}
+                        label={copy.warmTtl}
                         onChange={(value) =>
                           updateDraftField(setDraft, (currentDraft) => ({
                             ...currentDraft,
@@ -657,8 +669,8 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                       </ClearBox>
                       <ClearBox style={providerSettingsGridStyle}>
                         <TextInputField
-                          hint="Command name or absolute path. Defaults to codex."
-                          label="Command"
+                          hint={copy.commandHint('codex')}
+                          label={copy.command}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
                               ...currentDraft,
@@ -673,8 +685,8 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         />
                         <ModelSelectField
                           errorMessage={modelErrorMessage}
-                          hint="CLI model aliases are resolved by the local Codex CLI."
-                          label="Model"
+                          hint={copy.modelCodexHint}
+                          label={copy.model}
                           models={availableModels}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
@@ -686,22 +698,22 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                             }))
                           }
                           isRefreshing={isLoadingModels}
+                          copy={copy}
                           onRefresh={() => void refreshAvailableModels()}
                           value={draft.codex.model}
                         />
                       </ClearBox>
                       <ClearBox style={providerSettingsGridStyle}>
                         <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Status</Label>
+                          <Label>{copy.status}</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedGatewayProvider?.route_status_message ??
-                              'Save the provider, then probe the route to inspect the backend-owned Codex status.'}
+                            {selectedGatewayProvider?.route_status_message ?? copy.probeProviderRoute}
                           </Text>
                         </ClearBox>
                         <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Resolved binary</Label>
+                          <Label>{copy.resolvedBinary}</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedGatewayProvider?.resolved_binary || 'Unknown until probed'}
+                            {selectedGatewayProvider?.resolved_binary || copy.unknownUntilProbed}
                           </Text>
                         </ClearBox>
                       </ClearBox>
@@ -719,8 +731,8 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                       </ClearBox>
                       <ClearBox style={providerSettingsGridStyle}>
                         <TextInputField
-                          hint="Command name or absolute path. Defaults to claude."
-                          label="Command"
+                          hint={copy.commandHint('claude')}
+                          label={copy.command}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
                               ...currentDraft,
@@ -735,8 +747,8 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         />
                         <ModelSelectField
                           errorMessage={modelErrorMessage}
-                          hint="Common Claude Code aliases are exposed locally; the CLI resolves exact model support."
-                          label="Model"
+                          hint={copy.modelClaudeHint}
+                          label={copy.model}
                           models={availableModels}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
@@ -748,22 +760,22 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                             }))
                           }
                           isRefreshing={isLoadingModels}
+                          copy={copy}
                           onRefresh={() => void refreshAvailableModels()}
                           value={draft.claude.model}
                         />
                       </ClearBox>
                       <ClearBox style={providerSettingsGridStyle}>
                         <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Status</Label>
+                          <Label>{copy.status}</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedGatewayProvider?.route_status_message ??
-                              'Save the provider, then probe the route to inspect the backend-owned Claude status.'}
+                            {selectedGatewayProvider?.route_status_message ?? copy.probeProviderRoute}
                           </Text>
                         </ClearBox>
                         <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Resolved binary</Label>
+                          <Label>{copy.resolvedBinary}</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            {selectedGatewayProvider?.resolved_binary || 'Unknown until probed'}
+                            {selectedGatewayProvider?.resolved_binary || copy.unknownUntilProbed}
                           </Text>
                         </ClearBox>
                       </ClearBox>
@@ -781,7 +793,7 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                       <ClearBox style={providerSettingsGridStyle}>
                         <TextInputField
                           hint="Base URL for the HTTP source. Example: http://192.168.1.8:8317"
-                          label="Base URL"
+                          label={copy.baseUrl}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
                               ...currentDraft,
@@ -796,8 +808,8 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         />
                         <ModelSelectField
                           errorMessage={modelErrorMessage}
-                          hint="The backend reads `/v1/models` from this source and exposes enabled models in the chat toolbar."
-                          label="Model"
+                          hint={copy.modelHttpHint}
+                          label={copy.model}
                           models={availableModels}
                           onChange={(value) =>
                             updateDraftField(setDraft, (currentDraft) => ({
@@ -809,25 +821,26 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                             }))
                           }
                           isRefreshing={isLoadingModels}
+                          copy={copy}
                           onRefresh={() => void refreshAvailableModels()}
                           value={draft.openAICompatible.model}
                         />
                       </ClearBox>
                       <ClearBox style={providerSettingsGridStyle}>
                         <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Connection</Label>
+                          <Label>{copy.connection}</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
                             {selectedGatewayProvider?.base_url ??
                               selectedProvider?.openai_compatible?.base_url ??
-                              'Save the provider to expose the source in the shared AI toolbar.'}
+                              copy.probeProviderRoute}
                           </Text>
                         </ClearBox>
                         <ClearBox style={providerSettingsFieldStyle}>
-                          <Label>Chat visibility</Label>
+                          <Label>{copy.chatVisibility}</Label>
                           <Text style={providerSettingsStatusMessageStyle}>
                             {selectedProvider?.openai_compatible?.chat_models?.length
-                              ? `${selectedProvider.openai_compatible.chat_models.length} models enabled for the chat toolbar.`
-                              : 'No discovered models are enabled yet.'}
+                              ? copy.chatEnabledModels(selectedProvider.openai_compatible.chat_models.length)
+                              : copy.noDiscoveredModelsEnabled}
                           </Text>
                         </ClearBox>
                       </ClearBox>
@@ -836,21 +849,21 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
 
                   <ClearBox style={providerSettingsSectionStyle}>
                     <ClearBox style={providerSettingsSectionHeaderStyle}>
-                      <Text style={{ fontWeight: 600 }}>Recent provider activity</Text>
+                      <Text style={{ fontWeight: 600 }}>{copy.recentProviderActivity}</Text>
                       <Text style={providerSettingsStatusMessageStyle}>
-                        Filtered persisted gateway history over the same backend-owned provider route.
+                        {copy.recentProviderActivityDescription}
                       </Text>
                     </ClearBox>
                     <ClearBox style={providerSettingsGridStyle}>
                       <TextInputField
-                        hint="Filter by provider, model, request mode, error, or conversation id."
-                        label="History search"
+                        hint={copy.historySearchHint}
+                        label={copy.historySearch}
                         onChange={setHistoryQuery}
-                        placeholder="Search recent runs"
+                        placeholder={copy.historySearchPlaceholder}
                         value={historyQuery}
                       />
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label htmlFor="provider-history-status-filter">Status filter</Label>
+                        <Label htmlFor="provider-history-status-filter">{copy.statusFilter}</Label>
                         <Select
                           id="provider-history-status-filter"
                           onChange={(event) =>
@@ -860,14 +873,14 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           }
                           value={historyStatus}
                         >
-                          <option value="all">All statuses</option>
-                          <option value="failed">Failed only</option>
-                          <option value="succeeded">Succeeded only</option>
-                          <option value="cancelled">Cancelled only</option>
+                          <option value="all">{copy.statuses.all}</option>
+                          <option value="failed">{copy.statuses.failedOnly}</option>
+                          <option value="succeeded">{copy.statuses.succeededOnly}</option>
+                          <option value="cancelled">{copy.statuses.cancelledOnly}</option>
                         </Select>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label htmlFor="provider-history-scope-filter">Provider scope</Label>
+                        <Label htmlFor="provider-history-scope-filter">{copy.providerScope}</Label>
                         <Select
                           id="provider-history-scope-filter"
                           onChange={(event) =>
@@ -875,12 +888,12 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           }
                           value={historyScope}
                         >
-                          <option value="selected">Selected provider</option>
-                          <option value="all">All providers</option>
+                          <option value="selected">{copy.selectedProvider}</option>
+                          <option value="all">{copy.allProviders}</option>
                         </Select>
                       </ClearBox>
                       <ClearBox style={providerSettingsFieldStyle}>
-                        <Label htmlFor="provider-history-limit-filter">History window</Label>
+                        <Label htmlFor="provider-history-limit-filter">{copy.historyWindow}</Label>
                         <Select
                           id="provider-history-limit-filter"
                           onChange={(event) =>
@@ -890,24 +903,23 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         >
                           {providerGatewayHistoryPageOptions.map((limit) => (
                             <option key={limit} value={String(limit)}>
-                              {limit} runs
+                              {copy.runs(limit)}
                             </option>
                           ))}
                         </Select>
                         <Text style={providerSettingsStatusMessageStyle}>
-                          Showing {historyRuns.length} of {historyTotal} persisted runs
-                          {historyOffset > 0 ? ` from offset ${historyOffset}` : ''}.
+                          {copy.showingRuns(historyRuns.length, historyTotal, historyOffset)}
                         </Text>
                       </ClearBox>
                     </ClearBox>
                     {historyErrorMessage ? (
                       <Text style={providerSettingsErrorMessageStyle}>
-                        Provider run history is unavailable: {historyErrorMessage}
+                        {copy.providerActivityUnavailable(historyErrorMessage)}
                       </Text>
                     ) : null}
                     <ClearBox style={{ display: 'grid', gap: 'var(--gap-xs)' }}>
                       {isHistoryLoading ? (
-                        <Text style={providerSettingsStatusMessageStyle}>Loading provider activity…</Text>
+                        <Text style={providerSettingsStatusMessageStyle}>{copy.loadingProviderActivity}</Text>
                       ) : historyRuns.length ? (
                         historyRuns.map((run: AgentProviderGatewayRun) => (
                           <ClearBox
@@ -932,13 +944,13 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           >
                             <Text style={{ fontWeight: 600 }}>
                               {run.provider_display_name || run.provider_id} ·{' '}
-                              {formatGatewayStatus(run.status)}
+                              {formatGatewayStatus(run.status, copy)}
                             </Text>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {run.request_mode} · {run.model || 'default model'} ·{' '}
+                              {run.request_mode} · {run.model || copy.defaultModel} ·{' '}
                               {formatDuration(run.duration_ms)} · first{' '}
                               {formatDuration(run.first_response_latency_ms)} ·{' '}
-                              {formatRunTimestamp(run.completed_at)}
+                              {formatRunTimestamp(run.completed_at, copy)}
                             </Text>
                             {run.error_message ? (
                               <Text style={providerSettingsErrorMessageStyle}>{run.error_message}</Text>
@@ -946,14 +958,12 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                           </ClearBox>
                         ))
                       ) : (
-                        <Text style={providerSettingsStatusMessageStyle}>
-                          No provider activity matches the current backend filters.
-                        </Text>
+                        <Text style={providerSettingsStatusMessageStyle}>{copy.noProviderActivity}</Text>
                       )}
                     </ClearBox>
                     {historyHasMore ? (
                       <Button disabled={isHistoryLoading} onClick={loadMoreHistory}>
-                        {isHistoryLoading ? 'Loading…' : 'Load more history'}
+                        {isHistoryLoading ? copy.loadingModels : copy.loadMoreHistory}
                       </Button>
                     ) : null}
                     {selectedHistoryRun ? (
@@ -968,89 +978,91 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         }}
                       >
                         <ClearBox style={providerSettingsSectionHeaderStyle}>
-                          <Text style={{ fontWeight: 600 }}>Run diagnostics</Text>
+                          <Text style={{ fontWeight: 600 }}>{copy.runDiagnostics}</Text>
                           <Text style={providerSettingsStatusMessageStyle}>
-                            Detailed operator view for the selected persisted provider run.
+                            {copy.runDiagnosticsDescription}
                           </Text>
                         </ClearBox>
                         <ClearBox style={providerSettingsGridStyle}>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Provider</Label>
+                            <Label>{copy.provider}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {selectedHistoryRun.provider_display_name || selectedHistoryRun.provider_id}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Status</Label>
+                            <Label>{copy.status}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {formatGatewayStatus(selectedHistoryRun.status)}
+                              {formatGatewayStatus(selectedHistoryRun.status, copy)}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Error class</Label>
+                            <Label>{copy.errorClass}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {formatProviderGatewayErrorCode(selectedHistoryRun.error_code) || 'n/a'}
+                              {formatProviderGatewayErrorCode(selectedHistoryRun.error_code) || copy.unknown}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Conversation</Label>
+                            <Label>{copy.conversation}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {selectedHistoryRun.conversation_id || 'n/a'}
+                              {selectedHistoryRun.conversation_id || copy.unknown}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Request mode</Label>
+                            <Label>{copy.requestMode}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {selectedHistoryRun.request_mode}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Actor</Label>
+                            <Label>{copy.actor}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {selectedHistoryRun.actor_username || 'unknown'}
+                              {selectedHistoryRun.actor_username || copy.unknown}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Model</Label>
+                            <Label>{copy.model}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {selectedHistoryRun.model || 'default model'}
+                              {selectedHistoryRun.model || copy.defaultModel}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Resolved route</Label>
+                            <Label>{copy.resolvedRoute}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {selectedHistoryRun.resolved_binary || selectedHistoryRun.base_url || 'n/a'}
+                              {selectedHistoryRun.resolved_binary ||
+                                selectedHistoryRun.base_url ||
+                                copy.unknown}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>First response</Label>
+                            <Label>{copy.firstResponse}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {formatDuration(selectedHistoryRun.first_response_latency_ms)}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Route state</Label>
+                            <Label>{copy.routeState}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {selectedHistoryRun.route_status_state || 'unchecked'} ·{' '}
                               {selectedHistoryRun.route_prepare_state || 'unprepared'}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Total duration</Label>
+                            <Label>{copy.totalDuration}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
                               {formatDuration(selectedHistoryRun.duration_ms)}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Started</Label>
+                            <Label>{copy.started}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {formatRunTimestamp(selectedHistoryRun.started_at)}
+                              {formatRunTimestamp(selectedHistoryRun.started_at, copy)}
                             </Text>
                           </ClearBox>
                           <ClearBox style={providerSettingsFieldStyle}>
-                            <Label>Completed</Label>
+                            <Label>{copy.completed}</Label>
                             <Text style={providerSettingsStatusMessageStyle}>
-                              {formatRunTimestamp(selectedHistoryRun.completed_at)}
+                              {formatRunTimestamp(selectedHistoryRun.completed_at, copy)}
                             </Text>
                           </ClearBox>
                         </ClearBox>
@@ -1083,19 +1095,19 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                       <Text style={providerSettingsStatusMessageStyle}>{statusMessage}</Text>
                     ) : null}
                     {!errorMessage && !statusMessage && isLoading ? (
-                      <Text style={providerSettingsStatusMessageStyle}>Loading provider catalog…</Text>
+                      <Text style={providerSettingsStatusMessageStyle}>{copy.loading}</Text>
                     ) : null}
                   </ClearBox>
                   <ClearBox style={providerSettingsActionsGroupStyle}>
                     <Button disabled={isSaving} onClick={resetDraft}>
-                      Reset
+                      {copy.reset}
                     </Button>
                     {draft.mode === 'existing' ? (
                       <Button
                         disabled={isSaving || selectedProvider?.active}
                         onClick={() => void activateSelectedProvider()}
                       >
-                        Activate
+                        {copy.activate}
                       </Button>
                     ) : null}
                     {draft.mode === 'existing' ? (
@@ -1103,11 +1115,11 @@ export function AgentProviderSettingsWidget({ embedded = false }: { embedded?: b
                         disabled={isSaving || selectedProvider?.active}
                         onClick={() => void removeSelectedProvider()}
                       >
-                        Delete
+                        {copy.delete}
                       </Button>
                     ) : null}
                     <Button disabled={isSaving} onClick={() => void saveDraft()}>
-                      {isSaving ? 'Saving…' : draft.mode === 'new' ? 'Create provider' : 'Save changes'}
+                      {isSaving ? copy.saving : draft.mode === 'new' ? copy.createProvider : copy.saveChanges}
                     </Button>
                   </ClearBox>
                 </ClearBox>

@@ -51,6 +51,23 @@ function expectTextBefore(leftText: string, rightText: string) {
 }
 
 describe('FilesPanelWidget', () => {
+  it('renders file panel controls through the active locale copy', async () => {
+    vi.mocked(listFilesDirectory).mockResolvedValue({
+      entries: [],
+      path: '/repo',
+    })
+
+    render(<FilesPanelWidget locale="ru" path="/repo" title="repo" />)
+
+    expect(screen.getByText('Загрузка каталога')).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Путь files' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Открыть путь files' })).toBeInTheDocument()
+      expect(screen.getByText('Каталог пуст')).toBeInTheDocument()
+    })
+  })
+
   it('loads and renders a backend directory listing', async () => {
     vi.mocked(listFilesDirectory).mockResolvedValue({
       entries: [

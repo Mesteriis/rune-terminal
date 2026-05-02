@@ -35,8 +35,9 @@ export type TerminalSurfaceProps = {
   cursorBlink?: boolean
   cursorStyle?: 'block' | 'bar' | 'underline'
   fontSize?: number
-  lineHeight?: number
   hostId: string
+  inputAriaLabel?: string
+  lineHeight?: number
   outputChunks: TerminalSurfaceOutputChunk[]
   sessionKey: string
   sessionState: TerminalSessionState
@@ -225,8 +226,9 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       cursorBlink = true,
       cursorStyle = 'block',
       fontSize = 13,
-      lineHeight = 1.25,
       hostId,
+      inputAriaLabel = 'Terminal',
+      lineHeight = 1.25,
       outputChunks,
       sessionKey,
       sessionState,
@@ -363,6 +365,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
       term.loadAddon(webLinksAddon)
       term.loadAddon(clipboardAddon)
       term.open(openTarget)
+      openTarget.querySelector('textarea')?.setAttribute('aria-label', inputAriaLabel)
       applyTerminalTheme(term, openTarget, themeMode)
       onRendererModeChange?.('default')
 
@@ -465,7 +468,11 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, TerminalSurface
         termRef.current = null
         term.dispose()
       }
-    }, [hostId, lineHeight, onRendererModeChange, onRequestSearch, themeClassTarget])
+    }, [hostId, inputAriaLabel, lineHeight, onRendererModeChange, onRequestSearch, themeClassTarget])
+
+    useEffect(() => {
+      viewportRef.current?.querySelector('textarea')?.setAttribute('aria-label', inputAriaLabel)
+    }, [inputAriaLabel])
 
     useEffect(() => {
       const term = termRef.current

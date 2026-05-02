@@ -2,6 +2,9 @@ import type * as React from 'react'
 import type { IDockviewHeaderActionsProps } from 'dockview-react'
 import { Plus, X } from 'lucide-react'
 
+import type { AppLocale } from '@/shared/api/runtime'
+import { resolveLocalizedCopy } from '@/features/i18n/model/localized-copy'
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { createTerminalTab } from '@/features/terminal/api/client'
 import { closeWorkspaceWidget, WorkspaceAPIError } from '@/shared/api/workspace'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
@@ -21,8 +24,20 @@ import {
   terminalDockviewActionGroupStyle,
   terminalDockviewIconButtonStyle,
 } from '@/widgets/terminal/terminal-dockview-actions.styles'
+import { terminalWidgetCopy } from '@/widgets/terminal/terminal-widget-copy'
+
+function useOptionalAppLocale(): AppLocale {
+  try {
+    return useAppLocale().locale
+  } catch {
+    return 'en'
+  }
+}
 
 export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderActionsProps) {
+  const locale = useOptionalAppLocale()
+  const copy = resolveLocalizedCopy(terminalWidgetCopy, locale)
+
   if (!props.activePanel) {
     return null
   }
@@ -113,7 +128,7 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
         <Box runaComponent="terminal-dockview-header-actions-group" style={terminalDockviewActionGroupStyle}>
           {terminalPanelParams ? (
             <IconButton
-              aria-label={`Add terminal tab for ${terminalPanelParams.title}`}
+              aria-label={copy.addTerminalTabAria(terminalPanelParams.title)}
               onClick={handleAddTerminalTab}
               onPointerDown={handleAddPointerDown}
               runaComponent="terminal-group-add"
@@ -124,7 +139,7 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
             </IconButton>
           ) : null}
           <IconButton
-            aria-label={`Close ${props.activePanel.title ?? props.activePanel.id}`}
+            aria-label={copy.closePanelAria(props.activePanel.title ?? props.activePanel.id)}
             onClick={handleClosePanel}
             onPointerDown={handleClosePointerDown}
             runaComponent="dockview-panel-close"

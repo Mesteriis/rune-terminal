@@ -1,5 +1,6 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 
+import type { AppLocale } from '@/shared/api/runtime'
 import {
   listFilesDirectory,
   openFilesPathExternally,
@@ -36,9 +37,11 @@ import {
   filesPanelTitleStyle,
   resolveFilesPanelRowStyle,
 } from './files-panel-widget.styles'
+import { filesPanelWidgetCopy } from './files-panel-widget-copy'
 
 export type FilesPanelWidgetProps = {
   connectionId?: string
+  locale?: AppLocale
   onOpenPreview?: (preview: { connectionId?: string; path: string; title: string; widgetId: string }) => void
   onOpenTerminal?: (terminal: { tabId: string; title: string; widgetId: string }) => void
   path: string
@@ -85,21 +88,39 @@ function renderSortLabel(label: string, mode: FilesPanelSortMode, sort: FilesPan
   return `${label} ${sort.direction.toUpperCase()}`
 }
 
-function formatEntryCount(visibleCount: number, totalCount: number) {
+function formatEntryCount(visibleCount: number, totalCount: number, locale: AppLocale) {
   const entryLabel = totalCount === 1 ? 'entry' : 'entries'
 
   if (visibleCount === totalCount) {
+    if (locale === 'ru') {
+      return `${totalCount} элементов`
+    }
+    if (locale === 'zh-CN') {
+      return `${totalCount} 个条目`
+    }
+    if (locale === 'es') {
+      return `${totalCount} entradas`
+    }
     return `${totalCount} ${entryLabel}`
   }
 
+  if (locale === 'ru') {
+    return `${visibleCount} из ${totalCount} элементов`
+  }
+  if (locale === 'zh-CN') {
+    return `${visibleCount} / ${totalCount} 个条目`
+  }
+  if (locale === 'es') {
+    return `${visibleCount} de ${totalCount} entradas`
+  }
   return `${visibleCount} of ${totalCount} ${entryLabel}`
 }
 
-function getPathTitle(path: string) {
+function getPathTitle(path: string, fallbackTitle: string) {
   const trimmedPath = path.replace(/\/+$/g, '')
   const lastSegment = trimmedPath.split('/').filter(Boolean).pop()
 
-  return lastSegment || trimmedPath || 'Shell'
+  return lastSegment || trimmedPath || fallbackTitle
 }
 
 function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelSortState) {
@@ -139,12 +160,14 @@ function sortFilesPanelEntries(entries: FilesDirectoryEntry[], sort: FilesPanelS
 
 export function FilesPanelWidget({
   connectionId,
+  locale = 'en',
   onOpenPreview,
   onOpenTerminal,
   path,
   title,
   widgetId,
 }: FilesPanelWidgetProps) {
+  const copy = filesPanelWidgetCopy[locale]
   const [currentPath, setCurrentPath] = useState(path)
   const [pathDraft, setPathDraft] = useState(path)
   const [filterValue, setFilterValue] = useState('')
@@ -258,7 +281,8 @@ export function FilesPanelWidget({
       await openFilesPathExternally(currentPath, { connectionId, widgetId })
       setOpenState({
         entryName: currentPath,
-        message: 'Open request sent for current directory',
+        message:
+          locale === 'en' ? 'Open request sent for current directory' : copy.openCurrentDirectoryExternally,
         status: 'success',
       })
     } catch (error: unknown) {
@@ -291,7 +315,7 @@ export function FilesPanelWidget({
       await openFilesPathExternally(targetPath, { connectionId, widgetId })
       setOpenState({
         entryName: entry.name,
-        message: `Open request sent for ${entry.name}`,
+        message: locale === 'en' ? `Open request sent for ${entry.name}` : copy.openFile(entry.name),
         status: 'success',
       })
     } catch (error: unknown) {
@@ -314,7 +338,10 @@ export function FilesPanelWidget({
       await openFilesPathExternally(currentPath, { connectionId, widgetId })
       setOpenState({
         entryName: entry.name,
-        message: `Open request sent for containing folder of ${entry.name}`,
+        message:
+          locale === 'en'
+            ? `Open request sent for containing folder of ${entry.name}`
+            : copy.openContainingFolderForFile(entry.name),
         status: 'success',
       })
     } catch (error: unknown) {
@@ -331,7 +358,7 @@ export function FilesPanelWidget({
     if (!widgetId) {
       setOpenState({
         entryName: entry.name,
-        message: 'Preview target widget is unavailable',
+        message: copy.previewTargetUnavailable,
         status: 'error',
       })
       return
@@ -360,7 +387,7 @@ export function FilesPanelWidget({
       })
       setOpenState({
         entryName: entry.name,
-        message: `Preview widget opened for ${entry.name}`,
+        message: locale === 'en' ? `Preview widget opened for ${entry.name}` : copy.previewFile(entry.name),
         status: 'success',
       })
     } catch (error: unknown) {
@@ -375,7 +402,7 @@ export function FilesPanelWidget({
   const handleCopyPath = async (targetPath: string, label: string) => {
     setOpenState({
       entryName: label,
-      message: `Copying path for ${label}`,
+      message: copy.copyingPathFor(label),
       status: 'pending',
     })
 
@@ -383,7 +410,7 @@ export function FilesPanelWidget({
       await writeTextToClipboard(targetPath)
       setOpenState({
         entryName: label,
-        message: `Copied path for ${label}`,
+        message: copy.copiedPathFor(label),
         status: 'success',
       })
     } catch (error: unknown) {
@@ -429,13 +456,13 @@ export function FilesPanelWidget({
     if (!widgetId) {
       setOpenState({
         entryName: label,
-        message: 'Terminal target widget is unavailable',
+        message: copy.terminalTargetUnavailable,
         status: 'error',
       })
       return
     }
 
-    const terminalTitle = `Shell: ${getPathTitle(targetPath)}`
+    const terminalTitle = `${copy.shellTitle}: ${getPathTitle(targetPath, copy.shellTitle)}`
 
     setOpenState({
       entryName: label,
@@ -524,7 +551,9 @@ export function FilesPanelWidget({
       : []
   const sortedEntries = sortFilesPanelEntries(visibleEntries, sort)
   const entryCountLabel =
-    state.status === 'ready' ? formatEntryCount(visibleEntries.length, state.snapshot.entries.length) : null
+    state.status === 'ready'
+      ? formatEntryCount(visibleEntries.length, state.snapshot.entries.length, locale)
+      : null
 
   return (
     <Box runaComponent="files-panel-root" style={filesPanelRootStyle}>
@@ -544,97 +573,97 @@ export function FilesPanelWidget({
         </Box>
         <Box runaComponent="files-panel-controls" style={filesPanelControlsStyle}>
           <Input
-            aria-label="Files path"
+            aria-label={copy.path}
             onChange={(event) => setPathDraft(event.target.value)}
             onKeyDown={handlePathKeyDown}
-            placeholder="Path"
+            placeholder={copy.pathPlaceholder}
             runaComponent="files-panel-path-input"
             style={filesPanelPathInputStyle}
             value={pathDraft}
           />
           <Button
-            aria-label="Open files path"
+            aria-label={copy.openFilesPath}
             onClick={handleOpenPath}
             runaComponent="files-panel-open-path"
             style={filesPanelParentButtonStyle}
           >
-            Open
+            {copy.open}
           </Button>
           <Input
-            aria-label="Filter files"
+            aria-label={copy.filterFiles}
             onChange={(event) => setFilterValue(event.target.value)}
             onKeyDown={handleFilterKeyDown}
-            placeholder="Filter"
+            placeholder={copy.filter}
             runaComponent="files-panel-filter"
             style={filesPanelFilterInputStyle}
             value={filterValue}
           />
           {filterValue ? (
             <Button
-              aria-label="Clear files filter"
+              aria-label={copy.clearFilesFilter}
               onClick={() => setFilterValue('')}
               runaComponent="files-panel-clear-filter"
               style={filesPanelParentButtonStyle}
             >
-              Clear
+              {copy.clear}
             </Button>
           ) : null}
           <Button
-            aria-label={showHidden ? 'Hide hidden files' : 'Show hidden files'}
+            aria-label={showHidden ? copy.hideHiddenFiles : copy.showHiddenFiles}
             aria-pressed={showHidden}
             onClick={() => setShowHidden((value) => !value)}
             runaComponent="files-panel-toggle-hidden"
             style={filesPanelParentButtonStyle}
           >
-            {showHidden ? 'Hidden on' : 'Hidden off'}
+            {showHidden ? copy.hiddenOn : copy.hiddenOff}
           </Button>
           <Button
-            aria-label="Refresh directory"
+            aria-label={copy.refreshDirectory}
             onClick={() => setRefreshNonce((value) => value + 1)}
             runaComponent="files-panel-refresh"
             style={filesPanelParentButtonStyle}
           >
-            Refresh
+            {copy.refresh}
           </Button>
           <Button
-            aria-label="Open current directory externally"
+            aria-label={copy.openCurrentDirectoryExternally}
             onClick={() => {
               void handleOpenCurrentDirectory()
             }}
             runaComponent="files-panel-open-current-directory"
             style={filesPanelParentButtonStyle}
           >
-            Open dir
+            {copy.openDir}
           </Button>
           <Button
-            aria-label="Open terminal in current directory"
+            aria-label={copy.openTerminalInCurrentDirectory}
             disabled={!widgetId}
             onClick={() => {
-              void handleOpenTerminalHere(currentPath, 'current directory')
+              void handleOpenTerminalHere(currentPath, copy.currentDirectory)
             }}
             runaComponent="files-panel-open-current-terminal"
             style={filesPanelParentButtonStyle}
           >
-            Terminal
+            {copy.terminal}
           </Button>
           <Button
-            aria-label="Copy current directory path"
+            aria-label={copy.copyCurrentDirectoryPath}
             onClick={() => {
-              void handleCopyPath(currentPath, 'current directory')
+              void handleCopyPath(currentPath, copy.currentDirectory)
             }}
             runaComponent="files-panel-copy-current-directory"
             style={filesPanelParentButtonStyle}
           >
-            Copy path
+            {copy.copyPath}
           </Button>
           <Button
-            aria-label="Open parent directory"
+            aria-label={copy.openParentDirectory}
             disabled={!parentPath}
             onClick={handleOpenParent}
             runaComponent="files-panel-open-parent"
             style={filesPanelParentButtonStyle}
           >
-            Parent
+            {copy.parent}
           </Button>
         </Box>
       </Box>
@@ -642,7 +671,7 @@ export function FilesPanelWidget({
         <Box runaComponent="files-panel-list-inner" style={filesPanelListInnerStyle}>
           <Box runaComponent="files-panel-list-header" style={filesPanelListHeaderStyle}>
             <Button
-              aria-label="Sort files by kind"
+              aria-label={copy.sortByKind}
               onClick={() => handleSort('kind')}
               runaComponent="files-panel-sort-kind"
               style={{
@@ -650,10 +679,10 @@ export function FilesPanelWidget({
                 ...(sort.mode === 'kind' ? filesPanelSortButtonActiveStyle : null),
               }}
             >
-              {renderSortLabel('Kind', 'kind', sort)}
+              {renderSortLabel(copy.kind, 'kind', sort)}
             </Button>
             <Button
-              aria-label="Sort files by name"
+              aria-label={copy.sortByName}
               onClick={() => handleSort('name')}
               runaComponent="files-panel-sort-name"
               style={{
@@ -661,10 +690,10 @@ export function FilesPanelWidget({
                 ...(sort.mode === 'name' ? filesPanelSortButtonActiveStyle : null),
               }}
             >
-              {renderSortLabel('Name', 'name', sort)}
+              {renderSortLabel(copy.name, 'name', sort)}
             </Button>
             <Button
-              aria-label="Sort files by size"
+              aria-label={copy.sortBySize}
               onClick={() => handleSort('size')}
               runaComponent="files-panel-sort-size"
               style={{
@@ -673,10 +702,10 @@ export function FilesPanelWidget({
                 ...(sort.mode === 'size' ? filesPanelSortButtonActiveStyle : null),
               }}
             >
-              {renderSortLabel('Size', 'size', sort)}
+              {renderSortLabel(copy.size, 'size', sort)}
             </Button>
             <Button
-              aria-label="Sort files by modified time"
+              aria-label={copy.sortByModified}
               onClick={() => handleSort('modified')}
               runaComponent="files-panel-sort-modified"
               style={{
@@ -685,15 +714,15 @@ export function FilesPanelWidget({
                 ...(sort.mode === 'modified' ? filesPanelSortButtonActiveStyle : null),
               }}
             >
-              {renderSortLabel('Modified', 'modified', sort)}
+              {renderSortLabel(copy.modified, 'modified', sort)}
             </Button>
             <Text runaComponent="files-panel-column-actions" style={filesPanelSortButtonEndAlignedStyle}>
-              Actions
+              {copy.actions}
             </Text>
           </Box>
           {state.status === 'loading' ? (
             <Text runaComponent="files-panel-loading" style={filesPanelStateStyle}>
-              Loading directory
+              {copy.loadingDirectory}
             </Text>
           ) : null}
           {state.status === 'error' ? (
@@ -703,12 +732,12 @@ export function FilesPanelWidget({
           ) : null}
           {state.status === 'ready' && state.snapshot.entries.length === 0 ? (
             <Text runaComponent="files-panel-empty" style={filesPanelStateStyle}>
-              Directory is empty
+              {copy.directoryEmpty}
             </Text>
           ) : null}
           {state.status === 'ready' && state.snapshot.entries.length > 0 && visibleEntries.length === 0 ? (
             <Text runaComponent="files-panel-filter-empty" style={filesPanelStateStyle}>
-              {normalizedFilterValue ? 'No entries match filter' : 'No visible entries'}
+              {normalizedFilterValue ? copy.noEntriesMatchFilter : copy.noVisibleEntries}
             </Text>
           ) : null}
           {openState.status === 'pending' ? (
@@ -729,7 +758,7 @@ export function FilesPanelWidget({
           {state.status === 'ready'
             ? sortedEntries.map((entry) => (
                 <Box
-                  aria-label={entry.kind === 'directory' ? `Open directory ${entry.name}` : undefined}
+                  aria-label={entry.kind === 'directory' ? copy.openDirectory(entry.name) : undefined}
                   key={entry.id}
                   onClick={
                     entry.kind === 'directory'
@@ -755,7 +784,7 @@ export function FilesPanelWidget({
                   {entry.kind === 'file' ? (
                     <Box runaComponent="files-panel-row-actions" style={filesPanelRowActionsStyle}>
                       <Button
-                        aria-label={`Preview file ${entry.name}`}
+                        aria-label={copy.previewFile(entry.name)}
                         disabled={!widgetId}
                         onClick={() => {
                           void handlePreviewEntry(entry)
@@ -763,30 +792,30 @@ export function FilesPanelWidget({
                         runaComponent="files-panel-row-preview"
                         style={filesPanelRowActionButtonStyle}
                       >
-                        Preview
+                        {copy.preview}
                       </Button>
                       <Button
-                        aria-label={`Open file ${entry.name}`}
+                        aria-label={copy.openFile(entry.name)}
                         onClick={() => {
                           void handleOpenFileExternally(entry)
                         }}
                         runaComponent="files-panel-row-open"
                         style={filesPanelRowActionButtonStyle}
                       >
-                        Open
+                        {copy.open}
                       </Button>
                       <Button
-                        aria-label={`Open containing folder for file ${entry.name}`}
+                        aria-label={copy.openContainingFolderForFile(entry.name)}
                         onClick={() => {
                           void handleOpenContainingFolder(entry)
                         }}
                         runaComponent="files-panel-row-open-folder"
                         style={filesPanelRowActionButtonStyle}
                       >
-                        Folder
+                        {copy.folder}
                       </Button>
                       <Button
-                        aria-label={`Open terminal for file ${entry.name}`}
+                        aria-label={copy.openTerminalForFile(entry.name)}
                         disabled={!widgetId}
                         onClick={() => {
                           void handleOpenTerminalHere(currentPath, entry.name)
@@ -794,20 +823,20 @@ export function FilesPanelWidget({
                         runaComponent="files-panel-row-open-terminal"
                         style={filesPanelRowActionButtonStyle}
                       >
-                        Term
+                        {copy.term}
                       </Button>
                       <Button
-                        aria-label={`Copy path for file ${entry.name}`}
+                        aria-label={copy.copyPathForFile(entry.name)}
                         onClick={() => {
                           void handleCopyPath(joinRuntimePath(currentPath, entry.name), entry.name)
                         }}
                         runaComponent="files-panel-row-copy-path"
                         style={filesPanelRowActionButtonStyle}
                       >
-                        Copy
+                        {copy.copy}
                       </Button>
                       <Button
-                        aria-label={`Attach file ${entry.name} to AI`}
+                        aria-label={copy.attachFileToAi(entry.name)}
                         onClick={() => {
                           void handleAttachToAi(entry)
                         }}
@@ -822,7 +851,7 @@ export function FilesPanelWidget({
                       runaComponent="files-panel-row-actions-empty"
                       style={filesPanelSortButtonEndAlignedStyle}
                     >
-                      Folder
+                      {copy.folder}
                     </Text>
                   )}
                 </Box>

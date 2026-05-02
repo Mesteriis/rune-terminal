@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, type HTMLAttributes } from 'react'
 
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { Badge, Input, ScrollArea, Separator, Surface, Text, type BoxProps } from '@/shared/ui/primitives'
 
 import type { CommanderPaneController } from '@/widgets/commander/commander-pane-controller'
+import { commanderPaneCopy } from '@/widgets/commander/commander-pane-copy'
 import { CommanderPlainBox, CommanderPlainButton } from '@/widgets/commander/commander-plain'
 import {
   commanderInactivePaneStateBadgeStyle,
@@ -93,6 +95,8 @@ function CommanderHeaderCell({
 
 /** Renders one commander pane from a pane-scoped controller object. */
 export function CommanderPane({ controller }: CommanderPaneProps) {
+  const { locale } = useAppLocale()
+  const copy = commanderPaneCopy[locale]
   const { isActive, interactions, pane, pathEditor, sort } = controller
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const focusedRowId = useMemo(() => pane.rows.find((row) => row.focused)?.id ?? null, [pane.rows])
@@ -128,7 +132,7 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
             runaComponent={`commander-pane-${pane.id}-state`}
             style={isActive ? commanderPaneStateBadgeStyle : commanderInactivePaneStateBadgeStyle}
           >
-            {isActive ? 'ACTIVE' : 'PANE'}
+            {isActive ? copy.active : copy.pane}
           </Badge>
           <CommanderPlainBox
             runaComponent={`commander-pane-${pane.id}-path-field`}
@@ -279,7 +283,7 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
             </Badge>
           ) : null}
           <Text runaComponent={`commander-pane-${pane.id}-items`} style={commanderPaneMetaStyle}>
-            {pane.counters.items} items
+            {copy.items(pane.counters.items)}
           </Text>
         </CommanderPlainBox>
       </CommanderPlainBox>
@@ -296,9 +300,9 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
             ...commanderListHeaderButtonCenterAlignedStyle,
             ...(sort.mode === 'ext' ? commanderListHeaderButtonActiveStyle : null),
           }}
-          title="Sort by type"
+          title={copy.sortByType}
         >
-          {renderCommanderSortLabel('T', sort.mode === 'ext', sort.direction)}
+          {renderCommanderSortLabel(copy.type, sort.mode === 'ext', sort.direction)}
         </CommanderHeaderCell>
         <CommanderHeaderCell
           onActivate={() => interactions.setSortMode('name')}
@@ -307,12 +311,12 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
             ...commanderListHeaderButtonStyle,
             ...(sort.mode === 'name' ? commanderListHeaderButtonActiveStyle : null),
           }}
-          title="Sort by name"
+          title={copy.sortByName}
         >
-          {renderCommanderSortLabel('Name', sort.mode === 'name', sort.direction)}
+          {renderCommanderSortLabel(copy.name, sort.mode === 'name', sort.direction)}
         </CommanderHeaderCell>
         <Text runaComponent={`commander-pane-${pane.id}-column-git`} style={commanderPaneMetaStyle}>
-          Git
+          {copy.git}
         </Text>
         <CommanderHeaderCell
           onActivate={() => interactions.setSortMode('size')}
@@ -322,9 +326,9 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
             ...commanderListHeaderButtonEndAlignedStyle,
             ...(sort.mode === 'size' ? commanderListHeaderButtonActiveStyle : null),
           }}
-          title="Sort by size"
+          title={copy.sortBySize}
         >
-          {renderCommanderSortLabel('Size', sort.mode === 'size', sort.direction)}
+          {renderCommanderSortLabel(copy.size, sort.mode === 'size', sort.direction)}
         </CommanderHeaderCell>
         <CommanderHeaderCell
           onActivate={() => interactions.setSortMode('modified')}
@@ -334,9 +338,9 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
             ...commanderListHeaderButtonEndAlignedStyle,
             ...(sort.mode === 'modified' ? commanderListHeaderButtonActiveStyle : null),
           }}
-          title="Sort by modified"
+          title={copy.sortByModified}
         >
-          {renderCommanderSortLabel('Modified', sort.mode === 'modified', sort.direction)}
+          {renderCommanderSortLabel(copy.modified, sort.mode === 'modified', sort.direction)}
         </CommanderHeaderCell>
       </CommanderPlainBox>
       <Separator runaComponent={`commander-pane-${pane.id}-list-separator`} />
@@ -344,7 +348,7 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
         <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-rows`} style={commanderRowsStyle}>
           {pane.isLoading && pane.rows.length === 0 ? (
             <Text runaComponent={`commander-pane-${pane.id}-status-loading`} style={commanderStatusRowStyle}>
-              Loading directory…
+              {copy.loadingDirectory}
             </Text>
           ) : null}
           {pane.errorMessage && pane.rows.length === 0 ? (
@@ -452,7 +456,7 @@ export function CommanderPane({ controller }: CommanderPaneProps) {
       <Separator runaComponent={`commander-pane-${pane.id}-footer-separator`} />
       <CommanderPlainBox runaComponent={`commander-pane-${pane.id}-footer`} style={commanderPaneFooterStyle}>
         <Text runaComponent={`commander-pane-${pane.id}-selected-count`} style={commanderFooterTextStyle}>
-          {pane.counters.selectedItems} selected
+          {copy.selected(pane.counters.selectedItems)}
         </Text>
         <Text runaComponent={`commander-pane-${pane.id}-selected-size`} style={commanderFooterTextStyle}>
           {pane.counters.selectedSize}

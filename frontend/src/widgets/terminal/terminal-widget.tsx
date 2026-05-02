@@ -884,6 +884,7 @@ export function TerminalWidget({
             cursorStyle={cursorStyle}
             fontSize={fontSize}
             hostId={hostId}
+            inputAriaLabel={copy.terminalInputAria}
             lineHeight={lineHeight}
             onInput={terminalSession.canSendInput ? terminalSession.sendInputChunk : undefined}
             onRendererModeChange={setRendererMode}

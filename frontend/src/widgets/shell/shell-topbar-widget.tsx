@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { ClearBox } from '@/shared/ui/components'
 import { Box, Button, Input } from '@/shared/ui/primitives'
+import type { AppLocale } from '@/shared/api/runtime'
+import { shellTopbarWidgetCopy } from '@/widgets/shell/shell-topbar-widget-copy'
 import {
   activeWorkspaceTabStyle,
   addWorkspaceButtonStyle,
@@ -33,6 +35,7 @@ export type ShellWorkspaceTab = {
 
 type ShellTopbarWidgetProps = {
   isAiOpen: boolean
+  locale?: AppLocale
   onToggleAi: () => void
   onClose: () => void
   onMinimize: () => void
@@ -52,6 +55,7 @@ const actionIconProps = {
 
 export function ShellTopbarWidget({
   isAiOpen,
+  locale = 'en',
   onToggleAi,
   onClose,
   onMinimize,
@@ -63,6 +67,7 @@ export function ShellTopbarWidget({
   onRenameWorkspace,
   onDeleteWorkspace,
 }: ShellTopbarWidgetProps) {
+  const copy = shellTopbarWidgetCopy[locale]
   const menuWrapRef = useRef<HTMLDivElement | null>(null)
   const renameInputRef = useRef<HTMLInputElement | null>(null)
   const [openWorkspaceMenuId, setOpenWorkspaceMenuId] = useState<number | null>(null)
@@ -136,7 +141,7 @@ export function ShellTopbarWidget({
     <RunaDomScopeProvider component="shell-topbar-widget">
       <Box runaComponent="shell-topbar-root" style={topbarStyle}>
         <Button
-          aria-label="Close window"
+          aria-label={copy.closeWindow}
           className="runa-ui-button-quiet-danger"
           onClick={onClose}
           runaComponent="shell-topbar-close-window"
@@ -145,7 +150,7 @@ export function ShellTopbarWidget({
           <X {...actionIconProps} />
         </Button>
         <Button
-          aria-label="Collapse window"
+          aria-label={copy.collapseWindow}
           onClick={onMinimize}
           runaComponent="shell-topbar-collapse-window"
           style={iconButtonStyle}
@@ -153,7 +158,7 @@ export function ShellTopbarWidget({
           <Minus {...actionIconProps} />
         </Button>
         <Button
-          aria-label="Toggle fullscreen"
+          aria-label={copy.toggleFullscreen}
           onClick={onToggleFullscreen}
           runaComponent="shell-topbar-toggle-fullscreen"
           style={iconButtonStyle}
@@ -161,7 +166,7 @@ export function ShellTopbarWidget({
           <Maximize2 {...actionIconProps} />
         </Button>
         <Button
-          aria-label="Toggle AI panel"
+          aria-label={copy.toggleAiPanel}
           aria-pressed={isAiOpen}
           onClick={onToggleAi}
           runaComponent="shell-topbar-toggle-ai-panel"
@@ -172,7 +177,7 @@ export function ShellTopbarWidget({
         <ClearBox runaComponent="shell-topbar-workspace-strip-shell" style={workspaceStripShellStyle}>
           <ClearBox
             role="tablist"
-            aria-label="Workspace tabs"
+            aria-label={copy.workspaceTabs}
             runaComponent="shell-topbar-workspace-tabs"
             style={tabStripStyle}
           >
@@ -212,7 +217,7 @@ export function ShellTopbarWidget({
                     <Button
                       aria-expanded={isWorkspaceMenuOpen}
                       aria-haspopup="menu"
-                      aria-label={`Workspace actions for ${workspace.title}`}
+                      aria-label={copy.workspaceActions(workspace.title)}
                       onClick={(event) => {
                         event.stopPropagation()
                         handleToggleWorkspaceMenu(workspace.id, workspace.title)
@@ -224,7 +229,7 @@ export function ShellTopbarWidget({
                     </Button>
                     {isWorkspaceMenuOpen ? (
                       <ClearBox
-                        aria-label={`Workspace actions for ${workspace.title}`}
+                        aria-label={copy.workspaceActions(workspace.title)}
                         role="menu"
                         runaComponent={`shell-topbar-workspace-tab-menu-${workspace.id}`}
                         style={workspaceTabMenuStyle}
@@ -242,7 +247,7 @@ export function ShellTopbarWidget({
                               style={workspaceTabRenameFormStyle}
                             >
                               <Input
-                                aria-label="Workspace name"
+                                aria-label={copy.workspaceName}
                                 id={renameInputId}
                                 onChange={(event) => setRenameDraft(event.target.value)}
                                 onClick={(event) => event.stopPropagation()}
@@ -266,7 +271,7 @@ export function ShellTopbarWidget({
                                   style={workspaceTabRenameButtonStyle}
                                   type="submit"
                                 >
-                                  Save
+                                  {copy.save}
                                 </Button>
                                 <Button
                                   onClick={(event) => {
@@ -276,7 +281,7 @@ export function ShellTopbarWidget({
                                   runaComponent={`shell-topbar-workspace-rename-cancel-${workspace.id}`}
                                   style={workspaceTabRenameButtonStyle}
                                 >
-                                  Cancel
+                                  {copy.cancel}
                                 </Button>
                               </ClearBox>
                             </ClearBox>
@@ -293,7 +298,7 @@ export function ShellTopbarWidget({
                               style={workspaceTabMenuActionStyle}
                             >
                               <Pencil size={13} strokeWidth={1.75} />
-                              Rename
+                              {copy.rename}
                             </Button>
                             <Button
                               aria-disabled={!canDeleteWorkspace}
@@ -316,7 +321,7 @@ export function ShellTopbarWidget({
                               }
                             >
                               <Trash2 size={13} strokeWidth={1.75} />
-                              Delete
+                              {copy.delete}
                             </Button>
                           </>
                         )}
@@ -328,7 +333,7 @@ export function ShellTopbarWidget({
             })}
           </ClearBox>
           <Button
-            aria-label="Add workspace"
+            aria-label={copy.addWorkspace}
             onClick={onAddWorkspace}
             runaComponent="shell-topbar-add-workspace"
             style={addWorkspaceButtonStyle}

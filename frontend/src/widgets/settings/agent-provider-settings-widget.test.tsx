@@ -294,4 +294,16 @@ describe('AgentProviderSettingsWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load more history' }))
     expect(loadMoreHistory).toHaveBeenCalled()
   })
+
+  it('renders provider routing chrome through the active locale copy', () => {
+    render(<AgentProviderSettingsWidget embedded locale="ru" />)
+
+    expect(screen.getByText('AI / Провайдеры')).toBeVisible()
+    expect(screen.getByText('Настроенные провайдеры')).toBeVisible()
+    expect(screen.getByText('Сигналы gateway')).toBeVisible()
+    expect(screen.getByText('Недавняя активность провайдера')).toBeVisible()
+    expect(screen.getByText('Диагностика запуска')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Проверить маршрут провайдера' })).toBeVisible()
+    expect(screen.getByLabelText('Поиск истории')).toHaveValue('timeout')
+  })
 })

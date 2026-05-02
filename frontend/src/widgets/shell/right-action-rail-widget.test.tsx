@@ -113,7 +113,11 @@ function defaultTerminalSessionCatalog() {
   }
 }
 
-function renderRail(widgetCatalog = createWidgetCatalog(), sessionCatalog = defaultTerminalSessionCatalog()) {
+function renderRail(
+  widgetCatalog = createWidgetCatalog(),
+  sessionCatalog = defaultTerminalSessionCatalog(),
+  locale: 'en' | 'ru' = 'en',
+) {
   const dockviewApi = {
     activePanel: {
       id: 'terminal',
@@ -128,12 +132,17 @@ function renderRail(widgetCatalog = createWidgetCatalog(), sessionCatalog = defa
   render(
     <RightActionRailWidget
       dockviewApiRef={{ current: dockviewApi as never }}
+      locale={locale}
       onAddWorkspace={onAddWorkspace}
       widgetCatalog={widgetCatalog}
     />,
   )
 
-  fireEvent.click(screen.getByRole('button', { name: 'Open utility panel' }))
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: locale === 'ru' ? 'Открыть панель инструментов' : 'Open utility panel',
+    }),
+  )
 
   return {
     dockviewApi,
@@ -153,6 +162,15 @@ describe('RightActionRailWidget', () => {
     expect(
       screen.getByRole('menuitem', { name: 'Preview widget unavailable: Needs file path' }),
     ).toBeDisabled()
+  })
+
+  it('renders rail and widget menu labels through the active locale copy', () => {
+    renderRail(createWidgetCatalog(), defaultTerminalSessionCatalog(), 'ru')
+
+    expect(screen.getByRole('menu', { name: 'Меню создания виджета' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Создать виджет Terminal' })).toBeEnabled()
+    expect(screen.getByRole('menuitem', { name: 'Создать виджет Files' })).toBeEnabled()
+    expect(screen.getByRole('menuitem', { name: 'Preview недоступен: Нужен путь к файлу' })).toBeDisabled()
   })
 
   it('creates catalog-creatable files widgets through an explicit repo-root path handoff', async () => {

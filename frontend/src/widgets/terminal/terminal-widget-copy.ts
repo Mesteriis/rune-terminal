@@ -3,12 +3,15 @@ import type { TerminalToolbarCopy } from '@/shared/ui/components/terminal-toolba
 
 export type TerminalWidgetCopy = {
   activeSession: string
+  addTerminalTabAria: (title: string) => string
   aiLinked: string
   browseSessions: string
   browseSessionsAria: (title: string) => string
   browseSessionsTitle: string
   closeSession: string
   closeSessionAria: (index: number, title: string) => string
+  closePanelAria: (title: string) => string
+  closeTerminalTabAria: (title: string) => string
   connectionLocal: string
   connectionSSH: string
   createSessionAria: (title: string) => string
@@ -58,18 +61,22 @@ export type TerminalWidgetCopy = {
   runningCommand: string
   sessionLabel: (index: number) => string
   terminalSource: string
+  terminalInputAria: string
   terminalCommandApprovalInstruction: string
   toolbar: TerminalToolbarCopy
 }
 
 const terminalWidgetCopyEn: TerminalWidgetCopy = {
   activeSession: 'active',
+  addTerminalTabAria: (title) => `Add terminal tab for ${title}`,
   aiLinked: 'AI-linked',
   browseSessions: 'Browse sessions',
   browseSessionsAria: (title) => `Browse grouped terminal sessions for ${title}`,
   browseSessionsTitle: 'Inspect, filter, focus, or close grouped sessions in this terminal widget',
   closeSession: 'Close',
   closeSessionAria: (index, title) => `Close terminal session ${index} for ${title}`,
+  closePanelAria: (title) => `Close ${title}`,
+  closeTerminalTabAria: (title) => `Close terminal tab for ${title}`,
   connectionLocal: 'Local',
   connectionSSH: 'SSH',
   createSessionAria: (title) => `Create another terminal session for ${title}`,
@@ -120,6 +127,7 @@ const terminalWidgetCopyEn: TerminalWidgetCopy = {
   runningCommand: 'Running...',
   sessionLabel: (index) => `Session ${index}`,
   terminalSource: 'Terminal',
+  terminalInputAria: 'Terminal input',
   terminalCommandApprovalInstruction:
     'If fixing requires commands, plan them first and run them only in this terminal after approval.',
   toolbar: {
@@ -147,12 +155,15 @@ const terminalWidgetCopyEn: TerminalWidgetCopy = {
 const terminalWidgetCopyRu: TerminalWidgetCopy = {
   ...terminalWidgetCopyEn,
   activeSession: 'активна',
+  addTerminalTabAria: (title) => `Добавить вкладку терминала для ${title}`,
   aiLinked: 'Связано с AI',
   browseSessions: 'Сессии',
   browseSessionsAria: (title) => `Открыть список сгруппированных сессий терминала для ${title}`,
   browseSessionsTitle: 'Просмотреть, отфильтровать, сфокусировать или закрыть сгруппированные сессии',
   closeSession: 'Закрыть',
   closeSessionAria: (index, title) => `Закрыть сессию терминала ${index} для ${title}`,
+  closePanelAria: (title) => `Закрыть ${title}`,
+  closeTerminalTabAria: (title) => `Закрыть вкладку терминала для ${title}`,
   connectionLocal: 'Локально',
   createSessionAria: (title) => `Создать ещё одну сессию терминала для ${title}`,
   createSessionTitle: 'Создать новую backend-owned сессию в этом terminal widget',
@@ -203,6 +214,7 @@ const terminalWidgetCopyRu: TerminalWidgetCopy = {
   runningCommand: 'Запуск...',
   sessionLabel: (index) => `Сессия ${index}`,
   terminalSource: 'Терминал',
+  terminalInputAria: 'Ввод терминала',
   terminalCommandApprovalInstruction:
     'Если для исправления нужны команды, сначала спланируй их и выполняй только в этом терминале после approval.',
   toolbar: {
@@ -229,12 +241,15 @@ const terminalWidgetCopyRu: TerminalWidgetCopy = {
 
 const terminalWidgetCopyEs: TerminalWidgetCopy = {
   activeSession: 'activa',
+  addTerminalTabAria: (title) => `Agregar pestana de terminal para ${title}`,
   aiLinked: 'Vinculado con IA',
   browseSessions: 'Sesiones',
   browseSessionsAria: (title) => `Abrir sesiones agrupadas del terminal para ${title}`,
   browseSessionsTitle: 'Revisar, filtrar, enfocar o cerrar sesiones agrupadas',
   closeSession: 'Cerrar',
   closeSessionAria: (index, title) => `Cerrar la sesión de terminal ${index} para ${title}`,
+  closePanelAria: (title) => `Cerrar ${title}`,
+  closeTerminalTabAria: (title) => `Cerrar pestana de terminal para ${title}`,
   connectionLocal: 'Local',
   connectionSSH: 'SSH',
   createSessionAria: (title) => `Crear otra sesión de terminal para ${title}`,
@@ -286,6 +301,7 @@ const terminalWidgetCopyEs: TerminalWidgetCopy = {
   runningCommand: 'Ejecutando...',
   sessionLabel: (index) => `Sesión ${index}`,
   terminalSource: 'Terminal',
+  terminalInputAria: 'Entrada del terminal',
   terminalCommandApprovalInstruction:
     'Si la corrección requiere comandos, planéalos primero y ejecútalos solo en este terminal después de la aprobación.',
   toolbar: {
@@ -312,12 +328,15 @@ const terminalWidgetCopyEs: TerminalWidgetCopy = {
 
 const terminalWidgetCopyZhCN: TerminalWidgetCopy = {
   activeSession: '活动',
+  addTerminalTabAria: (title) => `为 ${title} 添加终端标签页`,
   aiLinked: '已关联 AI',
   browseSessions: '会话',
   browseSessionsAria: (title) => `打开 ${title} 的分组终端会话`,
   browseSessionsTitle: '查看、筛选、聚焦或关闭分组会话',
   closeSession: '关闭',
   closeSessionAria: (index, title) => `关闭 ${title} 的终端会话 ${index}`,
+  closePanelAria: (title) => `关闭 ${title}`,
+  closeTerminalTabAria: (title) => `关闭 ${title} 的终端标签页`,
   connectionLocal: '本地',
   connectionSSH: 'SSH',
   createSessionAria: (title) => `为 ${title} 创建另一个终端会话`,
@@ -367,6 +386,7 @@ const terminalWidgetCopyZhCN: TerminalWidgetCopy = {
   runningCommand: '正在运行...',
   sessionLabel: (index) => `会话 ${index}`,
   terminalSource: '终端',
+  terminalInputAria: '终端输入',
   terminalCommandApprovalInstruction: '如果修复需要命令，请先规划，并在获得批准后只在此终端中执行。',
   toolbar: {
     clearViewportAria: '清空终端视图',

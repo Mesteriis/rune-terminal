@@ -19,6 +19,27 @@ afterEach(() => {
 })
 
 describe('PreviewPanelWidget', () => {
+  it('renders preview panel controls through the active locale copy', async () => {
+    vi.mocked(readPreviewFile).mockResolvedValue({
+      content: '',
+      path: '/repo/empty.txt',
+      previewBytes: 0,
+      previewKind: 'text',
+      sizeBytes: 0,
+      truncated: false,
+    })
+
+    render(<PreviewPanelWidget locale="ru" path="/repo/empty.txt" title="empty.txt" />)
+
+    expect(screen.getByText('Загрузка preview')).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Открыть preview файл внешне' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Копировать путь preview файла' })).toBeInTheDocument()
+      expect(screen.getByText('Preview пуст')).toBeInTheDocument()
+    })
+  })
+
   it('loads and renders a text preview', async () => {
     vi.mocked(readPreviewFile).mockResolvedValue({
       content: '# Readme',

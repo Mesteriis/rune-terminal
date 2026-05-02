@@ -50,6 +50,30 @@ function renderShellTopbar() {
   }
 }
 
+function renderRussianShellTopbar() {
+  const onClose = vi.fn()
+  const onToggleAi = vi.fn()
+
+  render(
+    <ShellTopbarWidget
+      activeWorkspaceId={1}
+      isAiOpen={false}
+      locale="ru"
+      onAddWorkspace={() => {}}
+      onClose={onClose}
+      onDeleteWorkspace={() => {}}
+      onMinimize={() => {}}
+      onRenameWorkspace={() => {}}
+      onSelectWorkspace={() => {}}
+      onToggleFullscreen={() => {}}
+      onToggleAi={onToggleAi}
+      workspaceTabs={[{ id: 1, title: 'Workspace-1' }]}
+    />,
+  )
+
+  return { onClose, onToggleAi }
+}
+
 describe('ShellTopbarWidget', () => {
   it('renders workspace tabs with active selection and title tooltip', () => {
     renderShellTopbar()
@@ -104,6 +128,20 @@ describe('ShellTopbarWidget', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(onMinimize).toHaveBeenCalledTimes(1)
     expect(onToggleFullscreen).toHaveBeenCalledTimes(1)
+    expect(onToggleAi).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders shell chrome labels through the active locale copy', () => {
+    const { onClose, onToggleAi } = renderRussianShellTopbar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Закрыть окно' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Переключить AI-панель' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Действия workspace для Workspace-1' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Переименовать' }))
+
+    expect(screen.getByRole('menu', { name: 'Действия workspace для Workspace-1' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Имя workspace' })).toBeInTheDocument()
+    expect(onClose).toHaveBeenCalledTimes(1)
     expect(onToggleAi).toHaveBeenCalledTimes(1)
   })
 

@@ -6,6 +6,7 @@ import {
   registerTerminalPanelBinding,
   unregisterTerminalPanelBinding,
 } from '@/features/terminal/model/panel-registry'
+import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { $activeWidgetHostId, setActiveWidgetHostId } from '@/shared/model/widget-focus'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { Box, Text } from '@/shared/ui/primitives'
@@ -28,6 +29,7 @@ function isCommanderDemoPanel(panelId: string) {
 
 export function DockviewPanelWidget(props: IDockviewPanelProps) {
   const [panelGroupElement, setPanelGroupElement] = useState<HTMLElement | null>(null)
+  const { locale } = useAppLocale()
   const [panelCount, setPanelCount] = useState(props.api.group.panels.length)
   const [activeWidgetHostId, onSetActiveWidgetHostId] = useUnit([$activeWidgetHostId, setActiveWidgetHostId])
   const terminalModel = props.api.id.startsWith('terminal')
@@ -141,12 +143,14 @@ export function DockviewPanelWidget(props: IDockviewPanelProps) {
                 })
               }}
               path={filesModel.path}
+              locale={locale}
               title={filesModel.title}
               widgetId={filesModel.widgetId}
             />
           ) : previewModel ? (
             <PreviewPanelWidget
               connectionId={previewModel.connectionId}
+              locale={locale}
               path={previewModel.path}
               title={previewModel.title}
               widgetId={previewModel.widgetId}
