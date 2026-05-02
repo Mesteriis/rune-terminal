@@ -34,6 +34,9 @@ Current isolated style modules:
 - Commander pending-operation, warning, preview-row, inactive-badge, and batch-rename status colors also resolve through scoped `--runa-commander-*` variables; style-module tests guard those active surfaces from reintroducing raw RGB/hex literals
 - Commander file-dialog overlay, editor body, blocked state, and shadow colors also resolve through scoped `--runa-commander-dialog-*` variables, so the active F3/F4 modal surface follows the same theme contract
 - `ShellTopbarWidget`, `RightActionRailWidget`, and `ModalHostWidget` now keep their shell/panel chrome constants in adjacent `*.styles.ts` files instead of mixing presentational objects into the widget files
+- `TerminalSurface` resolves the xterm adaptive and contrast palettes through token-owned `--runa-terminal-ansi-*` / `--runa-terminal-contrast-*` variables instead of component-local raw color literals, so shell theme changes can re-apply terminal colors without recreating the panel
+- `WidgetBusyOverlayWidget` and `WidgetBusyMarker` keep busy-overlay chrome in `src/widgets/panel/widget-busy-overlay-widget.styles.ts`; particle colors resolve from token-owned `--runa-busy-particle-*` variables, while the widget files keep only runtime sizing and particle lifecycle logic
+- settings-shell error and inline-label styling now comes from `settings-shell-widget.styles.ts`, avoiding duplicate raw fallback colors in individual settings sections
 
 ### Primitives
 

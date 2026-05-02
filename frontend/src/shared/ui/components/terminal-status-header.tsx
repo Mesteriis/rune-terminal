@@ -104,7 +104,7 @@ function getSessionMeta(sessionState: TerminalSessionState) {
     return {
       Icon: CircleSlash,
       label: 'Failed',
-      color: 'var(--color-text-danger, #d49797)',
+      color: 'var(--color-danger-text)',
       spin: false,
     }
   }

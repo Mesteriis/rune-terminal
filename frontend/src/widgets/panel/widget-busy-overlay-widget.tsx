@@ -8,6 +8,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { $aiBlockedWidgetHostIds } from '@/shared/model/ai-blocked-widgets'
 import { Box } from '@/shared/ui/primitives'
 import { WidgetBusyMarker } from '@/widgets/panel/widget-busy-marker'
+import {
+  busyBlurLayerStyle,
+  busyCenterPlaneStyle,
+  busyForegroundLayerStyle,
+  busyOverlayStyle,
+  busyParticlesLayerStyle,
+  busyParticlesStyle,
+  resolveBusyParticlePalette,
+} from '@/widgets/panel/widget-busy-overlay-widget.styles'
 
 type WidgetBusyOverlayWidgetProps = {
   hostId: string
@@ -17,95 +26,6 @@ type WidgetBusyOverlayWidgetProps = {
 const BUSY_ICON_AREA_RATIO = 0.2
 let particlesEngineReady = false
 let particlesEnginePromise: Promise<void> | null = null
-
-const overlayStyle = {
-  position: 'absolute' as const,
-  inset: 0,
-  zIndex: 'var(--z-widget-busy)',
-  overflow: 'hidden' as const,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'transparent',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-  cursor: 'progress',
-}
-
-const particlesStyle = {
-  position: 'absolute' as const,
-  inset: 0,
-  width: '100%',
-  height: '100%',
-  display: 'block',
-  opacity: 1,
-}
-
-const blurLayerStyle = {
-  position: 'absolute' as const,
-  inset: 0,
-  zIndex: 0,
-  pointerEvents: 'none' as const,
-  background: 'rgba(5, 14, 12, 0.5)',
-  backdropFilter: 'blur(8px)',
-  WebkitBackdropFilter: 'blur(8px)',
-}
-
-const particlesLayerStyle = {
-  boxSizing: 'border-box' as const,
-  position: 'absolute' as const,
-  inset: 0,
-  padding: 0,
-  background: 'transparent',
-  color: 'var(--color-text)',
-  border: 'none',
-  borderRadius: 0,
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-  pointerEvents: 'none' as const,
-  zIndex: 1,
-  width: '100%',
-  height: '100%',
-  overflow: 'hidden' as const,
-  mixBlendMode: 'screen' as const,
-}
-
-const foregroundLayerStyle = {
-  boxSizing: 'border-box' as const,
-  position: 'absolute' as const,
-  inset: 0,
-  padding: 0,
-  background: 'transparent',
-  color: 'var(--color-text)',
-  border: 'none',
-  borderRadius: 0,
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  pointerEvents: 'none' as const,
-  zIndex: 2,
-}
-
-const centerPlaneStyle = {
-  boxSizing: 'border-box' as const,
-  position: 'relative' as const,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 0,
-  color: 'var(--color-text)',
-  border: 'none',
-  borderRadius: 0,
-  background: 'transparent',
-  boxShadow: 'none',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
-  animation: 'runa-busy-icon-breathe 2.2s ease-in-out infinite',
-}
 
 function getOverlaySize(element: HTMLDivElement | null) {
   if (!element) {
@@ -144,17 +64,46 @@ function ensureParticlesEngine() {
   return particlesEnginePromise
 }
 
+function getRootThemeSignal() {
+  if (typeof document === 'undefined') {
+    return ''
+  }
+
+  const root = document.documentElement
+
+  return `${root.getAttribute('data-runa-theme') ?? ''}:${root.getAttribute('data-runa-resolved-theme') ?? ''}`
+}
+
 export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlayWidgetProps) {
   const blockedWidgetHostIds = useUnit($aiBlockedWidgetHostIds)
   const isBusy = blockedWidgetHostIds.includes(hostId)
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const [isParticlesReady, setIsParticlesReady] = useState(particlesEngineReady)
   const [overlaySize, setOverlaySize] = useState({ width: 0, height: 0 })
+  const [rootThemeSignal, setRootThemeSignal] = useState(getRootThemeSignal)
 
   useEffect(() => {
     ensureParticlesEngine().then(() => {
       setIsParticlesReady(true)
     })
+  }, [])
+
+  useEffect(() => {
+    if (typeof MutationObserver === 'undefined' || typeof document === 'undefined') {
+      return
+    }
+
+    const root = document.documentElement
+    const observer = new MutationObserver(() => {
+      setRootThemeSignal(getRootThemeSignal())
+    })
+
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ['data-runa-theme', 'data-runa-resolved-theme'],
+    })
+
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -184,8 +133,8 @@ export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlay
     [overlaySize.height, overlaySize.width],
   )
   const particlesMountKey = useMemo(
-    () => `${hostId}-${overlaySize.width}x${overlaySize.height}`,
-    [hostId, overlaySize.height, overlaySize.width],
+    () => `${hostId}-${overlaySize.width}x${overlaySize.height}-${rootThemeSignal}`,
+    [hostId, overlaySize.height, overlaySize.width, rootThemeSignal],
   )
 
   const particleOptions = useMemo<ISourceOptions>(() => {
@@ -194,6 +143,7 @@ export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlay
       72,
       Math.min(196, Math.round((overlaySize.width * overlaySize.height) / 5600)),
     )
+    const particlePalette = resolveBusyParticlePalette()
 
     return {
       autoPlay: true,
@@ -226,7 +176,7 @@ export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlay
       },
       particles: {
         color: {
-          value: ['#78e6ca', '#b6dfd4', '#fbfffd'],
+          value: particlePalette.colors,
         },
         collisions: {
           enable: true,
@@ -235,7 +185,7 @@ export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlay
         },
         links: {
           enable: true,
-          color: '#b8efe2',
+          color: particlePalette.linkColor,
           distance: linkDistance,
           opacity: 0.52,
           width: 1.5,
@@ -266,7 +216,7 @@ export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlay
             length: 3,
             fill: {
               color: {
-                value: '#06110f',
+                value: particlePalette.trailColor,
               },
             },
           },
@@ -309,7 +259,7 @@ export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlay
       pauseOnBlur: true,
       pauseOnOutsideViewport: true,
     }
-  }, [overlaySize.height, overlaySize.width])
+  }, [overlaySize.height, overlaySize.width, rootThemeSignal])
 
   if (!isBusy) {
     return null
@@ -321,29 +271,33 @@ export function WidgetBusyOverlayWidget({ hostId, mountNode }: WidgetBusyOverlay
       aria-label={`Widget ${hostId} is busy`}
       runaComponent="widget-busy-overlay-root"
       ref={overlayRef}
-      style={overlayStyle}
+      style={busyOverlayStyle}
     >
-      <Box data-runa-busy-blur-layer="" runaComponent="widget-busy-blur-layer" style={blurLayerStyle} />
+      <Box data-runa-busy-blur-layer="" runaComponent="widget-busy-blur-layer" style={busyBlurLayerStyle} />
       <Box
         data-runa-busy-particles-layer=""
         runaComponent="widget-busy-particles-layer"
-        style={particlesLayerStyle}
+        style={busyParticlesLayerStyle}
       >
         {isParticlesReady && overlaySize.width > 0 && overlaySize.height > 0 ? (
           <Particles
             id={`busy-particles-${hostId}`}
             key={particlesMountKey}
             options={particleOptions}
-            style={particlesStyle}
+            style={busyParticlesStyle}
           />
         ) : null}
       </Box>
-      <Box data-runa-busy-foreground="" runaComponent="widget-busy-foreground" style={foregroundLayerStyle}>
+      <Box
+        data-runa-busy-foreground=""
+        runaComponent="widget-busy-foreground"
+        style={busyForegroundLayerStyle}
+      >
         <Box
           data-runa-busy-plane=""
           runaComponent="widget-busy-plane"
           style={{
-            ...centerPlaneStyle,
+            ...busyCenterPlaneStyle,
             width: `${busyPlaneSize}px`,
             height: `${busyPlaneSize}px`,
           }}

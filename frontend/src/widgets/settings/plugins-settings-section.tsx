@@ -18,6 +18,7 @@ import { Button, Input, Select, Text, TextArea } from '@/shared/ui/primitives'
 import {
   settingsShellBadgeStyle,
   settingsShellContentHeaderStyle,
+  settingsShellErrorTextStyle,
   settingsShellListRowStyle,
   settingsShellListStyle,
   settingsShellMutedTextStyle,
@@ -623,9 +624,7 @@ export function PluginsSettingsSection() {
       </ClearBox>
 
       {statusMessage ? <Text>{statusMessage}</Text> : null}
-      {errorMessage ? (
-        <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{errorMessage}</Text>
-      ) : null}
+      {errorMessage ? <Text style={settingsShellErrorTextStyle}>{errorMessage}</Text> : null}
 
       {isLoading ? (
         <Text style={settingsShellMutedTextStyle}>{copy.loadingCatalog}</Text>
@@ -651,7 +650,7 @@ export function PluginsSettingsSection() {
                     )}
                   </Text>
                   {plugin.runtime_error ? (
-                    <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{plugin.runtime_error}</Text>
+                    <Text style={settingsShellErrorTextStyle}>{plugin.runtime_error}</Text>
                   ) : null}
                 </ClearBox>
                 <ClearBox style={{ display: 'flex', gap: 'var(--gap-xs)', flexWrap: 'wrap' as const }}>

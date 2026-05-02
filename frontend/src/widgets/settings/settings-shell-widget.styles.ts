@@ -171,3 +171,14 @@ export const settingsShellBadgeStyle = {
 export const settingsShellMutedTextStyle = {
   color: 'var(--color-text-secondary)',
 }
+
+export const settingsShellErrorTextStyle = {
+  color: 'var(--color-danger-text)',
+}
+
+export const settingsShellInlineLabelStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'var(--gap-xs)',
+  color: 'var(--color-text-primary)',
+}

@@ -21,6 +21,7 @@ import { Button, Input, Text, TextArea } from '@/shared/ui/primitives'
 import {
   settingsShellBadgeStyle,
   settingsShellContentHeaderStyle,
+  settingsShellErrorTextStyle,
   settingsShellListRowStyle,
   settingsShellListStyle,
   settingsShellMutedTextStyle,
@@ -844,9 +845,7 @@ export function MCPSettingsSection() {
           {copy.probePrefix} `{probeResult.status}`: {describeProbeResult(probeResult)}
         </Text>
       ) : null}
-      {errorMessage ? (
-        <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{errorMessage}</Text>
-      ) : null}
+      {errorMessage ? <Text style={settingsShellErrorTextStyle}>{errorMessage}</Text> : null}
 
       {isLoading ? (
         <Text style={settingsShellMutedTextStyle}>{copy.loadingServers}</Text>

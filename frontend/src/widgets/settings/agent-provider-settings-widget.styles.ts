@@ -198,5 +198,5 @@ export const providerSettingsStatusMessageStyle = {
 }
 
 export const providerSettingsErrorMessageStyle = {
-  color: 'var(--color-danger-text, #ff8e8e)',
+  color: 'var(--color-danger-text)',
 }

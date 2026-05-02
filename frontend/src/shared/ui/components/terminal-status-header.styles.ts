@@ -154,7 +154,7 @@ export const terminalStatusHeaderShellMenuStyle: React.CSSProperties = {
   border: '1px solid var(--runa-terminal-surface-border, var(--color-border-subtle))',
   borderRadius: 'var(--radius-sm)',
   background: 'var(--color-canvas-elevated)',
-  boxShadow: 'var(--shadow-popover, 0 14px 32px rgba(0, 0, 0, 0.24))',
+  boxShadow: 'var(--shadow-menu-popover)',
 }
 
 export const terminalStatusHeaderShellMenuItemStyle: React.CSSProperties = {

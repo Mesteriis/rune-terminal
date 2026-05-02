@@ -25,7 +25,7 @@ export const terminalWidgetChromeStyle: React.CSSProperties = {
   borderRadius: 'var(--radius-sm)',
   background:
     'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 82%, var(--color-surface-canvas, transparent) 18%)',
-  boxShadow: '0 12px 32px color-mix(in srgb, var(--color-shadow, rgba(0, 0, 0, 0.28)) 20%, transparent)',
+  boxShadow: '0 12px 32px color-mix(in srgb, var(--color-shadow) 20%, transparent)',
   overflow: 'hidden',
 }
 

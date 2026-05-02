@@ -23,6 +23,8 @@ import { Button, Input, Text } from '@/shared/ui/primitives'
 import {
   settingsShellBadgeStyle,
   settingsShellContentHeaderStyle,
+  settingsShellErrorTextStyle,
+  settingsShellInlineLabelStyle,
   settingsShellListRowStyle,
   settingsShellListStyle,
   settingsShellMutedTextStyle,
@@ -939,14 +941,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
         />
       </ClearBox>
       <ClearBox style={{ display: 'flex', gap: 'var(--gap-sm)', flexWrap: 'wrap' as const }}>
-        <label
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--gap-xs)',
-            color: 'var(--color-text-primary, #f5f7ff)',
-          }}
-        >
+        <label style={settingsShellInlineLabelStyle}>
           <input
             aria-label={copy.tmuxSessionAria}
             checked={launchModeDraft === 'tmux'}
@@ -1025,9 +1020,7 @@ export function RemoteProfilesSettingsSection({ dockviewApi = null }: { dockview
       </ClearBox>
 
       {statusMessage ? <Text style={settingsShellMutedTextStyle}>{statusMessage}</Text> : null}
-      {errorMessage ? (
-        <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{errorMessage}</Text>
-      ) : null}
+      {errorMessage ? <Text style={settingsShellErrorTextStyle}>{errorMessage}</Text> : null}
 
       {isLoading ? (
         <Text style={settingsShellMutedTextStyle}>{copy.loadingProfiles}</Text>

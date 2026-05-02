@@ -11,6 +11,7 @@ import type { AppLocale } from '@/shared/api/runtime'
 import {
   settingsShellBadgeStyle,
   settingsShellContentHeaderStyle,
+  settingsShellErrorTextStyle,
   settingsShellListRowStyle,
   settingsShellListStyle,
   settingsShellMutedTextStyle,
@@ -546,9 +547,7 @@ export function RuntimeSettingsSection() {
           </ClearBox>
         </ClearBox>
 
-        {localeErrorMessage ? (
-          <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{localeErrorMessage}</Text>
-        ) : null}
+        {localeErrorMessage ? <Text style={settingsShellErrorTextStyle}>{localeErrorMessage}</Text> : null}
 
         <RadioGroup
           disabled={isLocaleLoading || isLocaleSaving}
@@ -642,9 +641,7 @@ export function RuntimeSettingsSection() {
           </ClearBox>
         </ClearBox>
 
-        {errorMessage ? (
-          <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{errorMessage}</Text>
-        ) : null}
+        {errorMessage ? <Text style={settingsShellErrorTextStyle}>{errorMessage}</Text> : null}
 
         <RadioGroup
           disabled={isLoading || isSaving || !canPersistWatcherMode}
@@ -696,9 +693,7 @@ export function RuntimeSettingsSection() {
           </ClearBox>
         </ClearBox>
 
-        {windowTitleError ? (
-          <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{windowTitleError}</Text>
-        ) : null}
+        {windowTitleError ? <Text style={settingsShellErrorTextStyle}>{windowTitleError}</Text> : null}
 
         <RadioGroup
           disabled={isLoadingWindowTitle || isSavingWindowTitle}

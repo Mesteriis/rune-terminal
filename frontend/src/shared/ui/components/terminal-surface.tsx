@@ -66,7 +66,7 @@ function getCssVariable(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
 }
 
-function getCssVariableFromElement(element: HTMLElement | null, name: string) {
+function getCssVariableFromElement(element: HTMLElement | null, name: string): string {
   if (!element || typeof window === 'undefined') {
     return getCssVariable(name)
   }
@@ -74,99 +74,137 @@ function getCssVariableFromElement(element: HTMLElement | null, name: string) {
   return getComputedStyle(element).getPropertyValue(name).trim()
 }
 
+function resolveCssVariableReference(element: HTMLElement | null, value: string, depth = 0): string {
+  if (value === '' || depth > 8) {
+    return value
+  }
+
+  const variableMatch = value.match(/^var\(\s*(--[a-zA-Z0-9-]+)(?:\s*,\s*(.+))?\s*\)$/)
+
+  if (!variableMatch) {
+    return value
+  }
+
+  const [, variableName, fallbackValue] = variableMatch
+  const resolvedValue = getCssVariableFromElement(element, variableName)
+
+  if (resolvedValue) {
+    return resolveCssVariableReference(element, resolvedValue, depth + 1)
+  }
+
+  return fallbackValue ? resolveCssVariableReference(element, fallbackValue.trim(), depth + 1) : ''
+}
+
+function getThemeColor(target: HTMLElement | null, variableNames: string[], fallback = '') {
+  for (const variableName of variableNames) {
+    const resolvedValue = resolveCssVariableReference(target, getCssVariableFromElement(target, variableName))
+
+    if (resolvedValue) {
+      return resolvedValue
+    }
+  }
+
+  return fallback
+}
+
 function getAdaptiveTerminalTheme(target: HTMLElement | null) {
-  const background =
-    getCssVariableFromElement(target, '--runa-terminal-surface-bg') ||
-    getCssVariable('--color-surface-glass-soft') ||
-    'rgba(9, 16, 15, 0.96)'
-
-  const foreground =
-    getCssVariableFromElement(target, '--runa-terminal-text-strong') ||
-    getCssVariable('--color-text-primary') ||
-    '#edf7f4'
-
-  const muted =
-    getCssVariableFromElement(target, '--runa-terminal-text-muted') ||
-    getCssVariable('--color-text-muted') ||
-    '#8da39d'
-
-  const secondary =
-    getCssVariableFromElement(target, '--runa-terminal-text-secondary') ||
-    getCssVariable('--color-text-secondary') ||
-    '#c5d6d1'
-
-  const accentPrimary =
-    getCssVariableFromElement(target, '--runa-terminal-status-running') ||
-    getCssVariable('--color-accent-emerald-strong') ||
-    '#47c0a0'
-
-  const accentSecondary =
-    getCssVariableFromElement(target, '--runa-terminal-status-idle') ||
-    getCssVariable('--color-accent-cold-tea') ||
-    '#82bcaa'
+  const background = getThemeColor(target, ['--runa-terminal-surface-bg', '--color-surface-glass-soft'])
+  const foreground = getThemeColor(target, ['--runa-terminal-text-strong', '--color-text-primary'])
+  const muted = getThemeColor(target, ['--runa-terminal-text-muted', '--color-text-muted'], foreground)
+  const secondary = getThemeColor(
+    target,
+    ['--runa-terminal-text-secondary', '--color-text-secondary'],
+    foreground,
+  )
+  const accentPrimary = getThemeColor(
+    target,
+    ['--runa-terminal-status-running', '--color-accent-emerald-strong'],
+    foreground,
+  )
+  const accentSecondary = getThemeColor(
+    target,
+    ['--runa-terminal-status-idle', '--color-accent-cold-tea'],
+    secondary,
+  )
 
   return {
     background,
     black: background,
     brightBlack: muted,
-    cursor:
-      getCssVariableFromElement(target, '--runa-terminal-cursor-color') ||
-      getCssVariableFromElement(target, '--runa-terminal-status-running') ||
-      getCssVariable('--color-accent-emerald-strong') ||
-      '#47c0a0',
-    cursorAccent:
-      getCssVariableFromElement(target, '--runa-terminal-cursor-accent') ||
-      getCssVariable('--color-canvas') ||
-      '#06110f',
+    cursor: getThemeColor(
+      target,
+      ['--runa-terminal-cursor-color', '--runa-terminal-status-running', '--color-accent-emerald-strong'],
+      accentPrimary,
+    ),
+    cursorAccent: getThemeColor(target, ['--runa-terminal-cursor-accent', '--color-canvas'], background),
     cyan: accentSecondary,
     foreground,
     green: accentPrimary,
-    red: '#b17373',
-    selectionBackground:
-      getCssVariableFromElement(target, '--runa-terminal-selection-background') || 'rgba(71, 192, 160, 0.2)',
+    red: getThemeColor(target, ['--runa-terminal-ansi-red', '--color-danger-text'], foreground),
+    selectionBackground: getThemeColor(
+      target,
+      ['--runa-terminal-selection-background', '--color-accent-emerald-soft'],
+      accentSecondary,
+    ),
     white: foreground,
-    yellow: '#c2b37f',
+    yellow: getThemeColor(target, ['--runa-terminal-ansi-yellow', '--color-accent-warning-text'], foreground),
     blue: secondary,
-    magenta: '#9ea7c9',
+    magenta: getThemeColor(target, ['--runa-terminal-ansi-magenta'], secondary),
     brightBlue: secondary,
     brightCyan: accentSecondary,
     brightGreen: accentPrimary,
-    brightMagenta: '#b7c0de',
-    brightRed: '#d49797',
-    brightWhite: '#f3fbf8',
-    brightYellow: '#d8c893',
+    brightMagenta: getThemeColor(target, ['--runa-terminal-ansi-bright-magenta'], secondary),
+    brightRed: getThemeColor(target, ['--runa-terminal-ansi-bright-red', '--color-danger-text'], foreground),
+    brightWhite: getThemeColor(target, ['--runa-terminal-ansi-bright-white'], foreground),
+    brightYellow: getThemeColor(
+      target,
+      ['--runa-terminal-ansi-bright-yellow', '--color-accent-warning-text'],
+      foreground,
+    ),
   }
 }
 
-function getContrastTerminalTheme() {
+function getContrastTerminalTheme(target: HTMLElement | null) {
+  const background = getThemeColor(target, ['--runa-terminal-contrast-background', '--color-canvas'])
+  const foreground = getThemeColor(target, ['--runa-terminal-contrast-foreground', '--color-text-primary'])
+  const cursor = getThemeColor(target, ['--runa-terminal-contrast-cursor'], foreground)
+
   return {
-    background: '#020605',
-    black: '#020605',
-    brightBlack: '#8da39d',
-    brightBlue: '#9fd7ff',
-    brightCyan: '#9ef5df',
-    brightGreen: '#69f3c6',
-    brightMagenta: '#d2c8ff',
-    brightRed: '#ffb0b0',
-    brightWhite: '#f5fffc',
-    brightYellow: '#ffe3a1',
-    blue: '#84bff4',
-    cursor: '#f5fffc',
-    cursorAccent: '#020605',
-    cyan: '#82d8c7',
-    foreground: '#f0fbf8',
-    green: '#47d6b3',
-    magenta: '#b8afe6',
-    red: '#ff9d9d',
-    selectionBackground: 'rgba(245, 255, 252, 0.24)',
-    white: '#f0fbf8',
-    yellow: '#e7cc84',
+    background,
+    black: getThemeColor(target, ['--runa-terminal-contrast-black'], background),
+    brightBlack: getThemeColor(
+      target,
+      ['--runa-terminal-contrast-bright-black', '--color-text-muted'],
+      foreground,
+    ),
+    brightBlue: getThemeColor(target, ['--runa-terminal-contrast-bright-blue'], foreground),
+    brightCyan: getThemeColor(target, ['--runa-terminal-contrast-bright-cyan'], foreground),
+    brightGreen: getThemeColor(target, ['--runa-terminal-contrast-bright-green'], foreground),
+    brightMagenta: getThemeColor(target, ['--runa-terminal-contrast-bright-magenta'], foreground),
+    brightRed: getThemeColor(
+      target,
+      ['--runa-terminal-contrast-bright-red', '--color-danger-text'],
+      foreground,
+    ),
+    brightWhite: getThemeColor(target, ['--runa-terminal-contrast-bright-white'], foreground),
+    brightYellow: getThemeColor(target, ['--runa-terminal-contrast-bright-yellow'], foreground),
+    blue: getThemeColor(target, ['--runa-terminal-contrast-blue'], foreground),
+    cursor,
+    cursorAccent: background,
+    cyan: getThemeColor(target, ['--runa-terminal-contrast-cyan'], foreground),
+    foreground,
+    green: getThemeColor(target, ['--runa-terminal-contrast-green'], foreground),
+    magenta: getThemeColor(target, ['--runa-terminal-contrast-magenta'], foreground),
+    red: getThemeColor(target, ['--runa-terminal-contrast-red', '--color-danger-text'], foreground),
+    selectionBackground: getThemeColor(target, ['--runa-terminal-contrast-selection-background'], background),
+    white: getThemeColor(target, ['--runa-terminal-contrast-white'], foreground),
+    yellow: getThemeColor(target, ['--runa-terminal-contrast-yellow'], foreground),
   }
 }
 
 function getTerminalTheme(mode: 'adaptive' | 'contrast', target: HTMLElement | null) {
   if (mode === 'contrast') {
-    return getContrastTerminalTheme()
+    return getContrastTerminalTheme(target)
   }
 
   return getAdaptiveTerminalTheme(target)

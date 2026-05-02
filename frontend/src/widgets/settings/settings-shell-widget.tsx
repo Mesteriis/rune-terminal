@@ -23,6 +23,7 @@ import {
   settingsShellContentScrollStyle,
   settingsShellContentStyle,
   settingsShellEyebrowStyle,
+  settingsShellErrorTextStyle,
   settingsShellListRowStyle,
   settingsShellListStyle,
   settingsShellMutedTextStyle,
@@ -322,11 +323,9 @@ function AiModelsSection() {
                   {copy.aiModels.countModels(availableModels.length)}
                 </ClearBox>
               </ClearBox>
-              {errorMessage ? (
-                <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{errorMessage}</Text>
-              ) : null}
+              {errorMessage ? <Text style={settingsShellErrorTextStyle}>{errorMessage}</Text> : null}
               {modelErrorMessage ? (
-                <Text style={{ color: 'var(--color-danger-text, #ff8e8e)' }}>{modelErrorMessage}</Text>
+                <Text style={settingsShellErrorTextStyle}>{modelErrorMessage}</Text>
               ) : null}
               {statusMessage ? <Text style={settingsShellMutedTextStyle}>{statusMessage}</Text> : null}
               {!errorMessage && !modelErrorMessage && visibleModels.length === 0 ? (
