@@ -188,6 +188,7 @@ export const terminalWidgetSessionButtonStyle: React.CSSProperties = {
   ['--runa-ui-bg' as string]: 'transparent',
   ['--runa-ui-border' as string]: 'transparent',
   ['--runa-ui-color' as string]: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
+  ['--runa-ui-focus-ring' as string]: 'transparent',
   minHeight: '28px',
   padding: '0 0.48rem',
   borderRadius: 'var(--radius-sm)',
@@ -198,6 +199,7 @@ export const terminalWidgetSessionButtonStyle: React.CSSProperties = {
   boxShadow: 'none',
   backdropFilter: 'none',
   WebkitBackdropFilter: 'none',
+  outline: 'none',
   textAlign: 'left',
   minWidth: 0,
 }
@@ -216,7 +218,7 @@ export const terminalWidgetSessionTabStyle: React.CSSProperties = {
 }
 
 export const terminalWidgetSessionButtonActiveStyle: React.CSSProperties = {
-  borderColor: 'color-mix(in srgb, var(--color-accent-border, var(--color-accent-text)) 44%, transparent)',
+  borderColor: 'transparent',
   background:
     'color-mix(in srgb, var(--color-accent-bg, var(--color-surface-glass-soft)) 34%, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%)',
   color: 'var(--color-accent-text)',

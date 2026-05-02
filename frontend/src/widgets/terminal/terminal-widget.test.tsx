@@ -1015,6 +1015,9 @@ describe('TerminalWidget', () => {
     const sessionTabs = document.querySelectorAll('[id*="terminal-widget-session-tab-"]')
     const sessionTab = sessionTabs.item(0)
     const activeSessionTab = sessionTabs.item(1)
+    const activeSessionButton = screen.getByRole('button', {
+      name: 'Focus terminal session 2 for Main terminal',
+    })
 
     expect(sessionRail).toHaveStyle({
       padding: '0 0.78rem 0.3rem',
@@ -1022,9 +1025,8 @@ describe('TerminalWidget', () => {
     expect(sessionTab?.getAttribute('style')).toContain(
       '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 36%, transparent)',
     )
-    expect(activeSessionTab?.getAttribute('style')).toContain(
-      'border-color: color-mix(in srgb, var(--color-accent-border, var(--color-accent-text)) 44%, transparent)',
-    )
+    expect(activeSessionTab?.getAttribute('style')).toContain('border-color: transparent')
+    expect(activeSessionButton.getAttribute('style')).toContain('--runa-ui-focus-ring: transparent')
     expect(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).toHaveStyle({
       alignItems: 'center',
       flexDirection: 'row',
