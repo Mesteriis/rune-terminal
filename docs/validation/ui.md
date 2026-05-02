@@ -6,6 +6,8 @@
 - State: `VERIFIED`
 - Scope:
   - settings modal ergonomics pass for section navigation, AI provider setup, and visible Russian copy cleanup
+  - settings modal chrome follow-up removes the visible shared dialog title, description, footer close action, sidebar heading, extra content wrapper frame, and settings-shell outer border while keeping the icon close action
+  - settings sidebar now scrolls inside its own column
   - AI provider diagnostics now stay hidden until a saved run is selected, reducing first-load visual noise in the settings modal
   - embedded provider settings no longer repeat the active-section title already owned by `SettingsShellWidget`
   - visible Russian settings copy removes mixed system jargon such as `settings sections`, `runtime DB`, `backend snapshot`, `AI composer`, and raw MCP `server/template/headers` phrasing where it was shown to operators
@@ -18,13 +20,15 @@
 ## Commands/tests used
 
 - `npm --prefix frontend run test -- src/shared/ui/style-theme-contracts.test.ts src/widgets/panel/panel-dom-mount.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --run`
+- `npm --prefix frontend run test -- src/shared/ui/components/dialog-popup.test.tsx src/widgets/settings/settings-shell-widget.test.tsx --run`
+- `npm --prefix frontend run test -- src/shared/ui/components/dialog-popup.test.tsx src/widgets/settings/settings-shell-widget.test.tsx src/widgets/settings/agent-provider-settings-widget.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/settings/plugins-settings-section.test.tsx src/widgets/settings/mcp-settings-section.test.tsx src/widgets/settings/remote-profiles-settings-section.test.tsx src/widgets/shell/right-action-rail-widget.test.tsx --run`
 - `npm --prefix frontend run test -- src/widgets/settings/settings-shell-widget.test.tsx src/widgets/settings/agent-provider-settings-widget.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/widgets/settings/terminal-settings-section.test.tsx src/widgets/settings/plugins-settings-section.test.tsx src/widgets/settings/mcp-settings-section.test.tsx src/widgets/settings/remote-profiles-settings-section.test.tsx src/widgets/shell/right-action-rail-widget.test.tsx --run`
 - `npm --prefix frontend run test -- src/shared/ui/style-theme-contracts.test.ts --run`
 - `npm --prefix frontend run test -- src/widgets/panel/panel-dom-mount.test.tsx src/widgets/settings/runtime-settings-section.test.tsx src/shared/ui/components/terminal-status-header.test.tsx --run`
 - `npm --prefix frontend run lint:active`
 - `scripts/check-active-path-api-imports.sh`
 - `git diff --check`
-- In-app browser DOM smoke at `http://127.0.0.1:5173/`: settings modal opens, sidebar shows `Разделы`, AI provider section uses `Провайдеры AI`, run diagnostics stay hidden before selecting a saved run, and old visible strings `AI / Провайдеры`, `Prepare route`, `Source is reachable`, `Route prepared via`, and English ` first ` are absent.
+- In-app browser DOM smoke at `http://127.0.0.1:5173/`: settings modal opens, keeps only `Close Настройки` icon close, removes footer `Close`, visible modal `Настройки`, modal description, sidebar `Разделы`, and settings-shell outer border/background; sidebar style resolves to scrollable overflow; AI provider section still uses `Провайдеры AI`, run diagnostics stay hidden before selecting a saved run, and old visible strings `AI / Провайдеры`, `Prepare route`, `Source is reachable`, `Route prepared via`, and English ` first ` are absent.
 
 ## Known limitations
 
@@ -36,8 +40,9 @@
 ## Evidence
 
 - Vitest result: `4 passed`, `13 passed`.
+- Settings chrome follow-up result: `2 passed`, `4 passed`; expanded settings/dialog result: `9 passed`, `48 passed`.
 - Settings ergonomics result: `8 passed`, `45 passed`.
-- In-app browser DOM smoke result: settings copy and diagnostics checks passed.
+- In-app browser DOM smoke result: settings chrome, scroll, copy, and diagnostics checks passed.
 - Final focused contract result: `1 passed`, `2 passed`.
 - Final related UI result: `3 passed`, `11 passed`.
 - TypeScript active lint exited `0`.

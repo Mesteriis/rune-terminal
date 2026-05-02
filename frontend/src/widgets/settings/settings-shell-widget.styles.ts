@@ -4,10 +4,10 @@ export const settingsShellRootStyle = {
   gap: '0',
   flex: 1,
   minHeight: 0,
-  border: '1px solid var(--color-border-subtle)',
-  borderRadius: 'var(--radius-lg)',
+  border: 'none',
+  borderRadius: 0,
   overflow: 'hidden',
-  background: 'color-mix(in srgb, var(--color-surface-glass-soft) 78%, transparent)',
+  background: 'transparent',
 }
 
 export const settingsShellSidebarStyle = {
@@ -16,15 +16,10 @@ export const settingsShellSidebarStyle = {
   gap: '0',
   borderRight: '1px solid var(--color-border-subtle)',
   minHeight: 0,
+  overflowY: 'auto' as const,
+  overflowX: 'hidden' as const,
+  overscrollBehavior: 'contain',
   background: 'color-mix(in srgb, var(--color-surface-glass-strong) 62%, transparent)',
-}
-
-export const settingsShellSidebarHeaderStyle = {
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: '0.28rem',
-  padding: '0.9rem 0.9rem 0.8rem 0.9rem',
-  borderBottom: '1px solid var(--color-border-subtle)',
 }
 
 export const settingsShellSidebarSectionStyle = {

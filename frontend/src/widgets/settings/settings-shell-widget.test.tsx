@@ -45,7 +45,7 @@ vi.mock('@/widgets/settings/terminal-settings-section', () => ({
 }))
 
 describe('SettingsShellWidget', () => {
-  it('uses concise Russian navigation copy without repeating the modal intro', () => {
+  it('uses concise Russian navigation copy without repeating local shell chrome', () => {
     vi.mocked(useAppLocale).mockReturnValue({
       errorMessage: null,
       isLoading: false,
@@ -58,11 +58,31 @@ describe('SettingsShellWidget', () => {
 
     render(<SettingsShellWidget />)
 
-    expect(screen.getByText('Разделы')).toBeVisible()
     expect(screen.getByText('Основные')).toBeVisible()
     expect(screen.getByText('Язык, тема и запуск.')).toBeVisible()
     expect(screen.getAllByText('Провайдеры AI').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Разделы')).not.toBeInTheDocument()
     expect(screen.queryByText(/Общий навигатор/)).not.toBeInTheDocument()
     expect(screen.queryByText(/settings sections/i)).not.toBeInTheDocument()
+  })
+
+  it('keeps settings navigation frameless and scrollable inside the sidebar', () => {
+    vi.mocked(useAppLocale).mockReturnValue({
+      errorMessage: null,
+      isLoading: false,
+      isSaving: false,
+      locale: 'ru',
+      refresh: vi.fn(),
+      setLocale: vi.fn(),
+      supportedLocales: ['en', 'ru', 'zh-CN', 'es'],
+    })
+
+    render(<SettingsShellWidget />)
+
+    const root = document.querySelector('[data-runa-node="shell-global-settings-shell-root"]')
+    const sidebar = document.querySelector('[data-runa-node="shell-global-settings-shell-sidebar"]')
+
+    expect(root).toHaveStyle({ borderStyle: 'none', background: 'transparent' })
+    expect(sidebar).toHaveStyle({ overflowY: 'auto' })
   })
 })

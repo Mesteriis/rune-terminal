@@ -39,6 +39,11 @@ const dialogHeaderStyle = {
   gap: 'var(--gap-sm)',
 }
 
+const settingsDialogHeaderStyle = {
+  ...dialogHeaderStyle,
+  justifyContent: 'flex-end',
+}
+
 const dialogTitleStyle = {
   display: 'block',
   fontWeight: 600,
@@ -57,6 +62,7 @@ const dialogActionsStyle = {
 }
 
 const dialogContentStyle = {
+  ...resetBoxStyle,
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 'var(--gap-sm)',
@@ -83,36 +89,37 @@ export function DialogPopup({
   onConfirm,
   onDismiss,
 }: DialogPopupProps) {
+  const isSettingsVariant = variant === 'settings'
+  const shouldRenderActions = Boolean(onConfirm) || !isSettingsVariant
+
   return (
-    <Box
-      style={variant === 'settings' ? { ...dialogPopupStyle, ...settingsDialogPopupStyle } : dialogPopupStyle}
-    >
-      <Box style={dialogHeaderStyle}>
-        <Text style={dialogTitleStyle}>{title}</Text>
+    <Box style={isSettingsVariant ? { ...dialogPopupStyle, ...settingsDialogPopupStyle } : dialogPopupStyle}>
+      <Box style={isSettingsVariant ? settingsDialogHeaderStyle : dialogHeaderStyle}>
+        {isSettingsVariant ? null : <Text style={dialogTitleStyle}>{title}</Text>}
         <Button
           aria-label={`Close ${title}`}
           onClick={onDismiss}
-          style={variant === 'settings' ? settingsCloseButtonStyle : undefined}
+          style={isSettingsVariant ? settingsCloseButtonStyle : undefined}
         >
-          {variant === 'settings' ? <X size={16} strokeWidth={1.75} /> : 'Close'}
+          {isSettingsVariant ? <X size={16} strokeWidth={1.75} /> : 'Close'}
         </Button>
       </Box>
-      <Text style={dialogDescriptionStyle}>{description}</Text>
+      {isSettingsVariant ? null : <Text style={dialogDescriptionStyle}>{description}</Text>}
       {children ? (
         <Box
           style={
-            variant === 'settings'
-              ? { ...dialogContentStyle, ...settingsDialogContentStyle }
-              : dialogContentStyle
+            isSettingsVariant ? { ...dialogContentStyle, ...settingsDialogContentStyle } : dialogContentStyle
           }
         >
           {children}
         </Box>
       ) : null}
-      <Box style={dialogActionsStyle}>
-        {onConfirm ? <Button onClick={onConfirm}>{confirmLabel}</Button> : null}
-        <Button onClick={onDismiss}>{dismissLabel}</Button>
-      </Box>
+      {shouldRenderActions ? (
+        <Box style={dialogActionsStyle}>
+          {onConfirm ? <Button onClick={onConfirm}>{confirmLabel}</Button> : null}
+          {isSettingsVariant ? null : <Button onClick={onDismiss}>{dismissLabel}</Button>}
+        </Box>
+      ) : null}
     </Box>
   )
 }

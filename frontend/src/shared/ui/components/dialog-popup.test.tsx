@@ -23,7 +23,7 @@ describe('DialogPopup', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it('renders the settings variant with confirm and icon close actions', () => {
+  it('renders the settings variant as a chrome-light shell with only icon close', () => {
     const onConfirm = vi.fn()
     const onDismiss = vi.fn()
 
@@ -44,8 +44,10 @@ describe('DialogPopup', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }))
     fireEvent.click(screen.getByRole('button', { name: 'Close Settings' }))
 
-    expect(screen.getByText('Body-scoped settings should stay on the wide layout.')).toBeInTheDocument()
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument()
+    expect(screen.queryByText('Body-scoped settings should stay on the wide layout.')).not.toBeInTheDocument()
     expect(screen.getByText('Embedded settings content')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Keep editing' })).not.toBeInTheDocument()
     expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })

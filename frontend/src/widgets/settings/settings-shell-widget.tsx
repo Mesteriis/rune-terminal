@@ -33,7 +33,6 @@ import {
   settingsShellRootStyle,
   settingsShellSectionCardStyle,
   settingsShellShellHeaderStyle,
-  settingsShellSidebarHeaderStyle,
   settingsShellSidebarSectionStyle,
   settingsShellSidebarSectionSpacingStyle,
   settingsShellSidebarStyle,
@@ -518,9 +517,6 @@ export function SettingsShellWidget() {
     <RunaDomScopeProvider component="settings-shell-widget">
       <ClearBox runaComponent="settings-shell-root" style={settingsShellRootStyle}>
         <ClearBox runaComponent="settings-shell-sidebar" style={settingsShellSidebarStyle}>
-          <ClearBox style={settingsShellSidebarHeaderStyle}>
-            <Text style={{ fontWeight: 600 }}>{copy.sidebar.settings}</Text>
-          </ClearBox>
           <ClearBox style={settingsShellSidebarSectionStyle}>
             <Button
               aria-pressed={activeSectionID === 'general'}
