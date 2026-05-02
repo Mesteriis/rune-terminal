@@ -78,7 +78,7 @@
       `POST /api/v1/terminal/{widgetID}/sessions` creates a sibling session and makes it active,
       `PUT /api/v1/terminal/{widgetID}/sessions/active` switches the active session explicitly,
       `DELETE /api/v1/terminal/{widgetID}/sessions/{sessionID}` closes an individual grouped session while preserving the widget,
-      and the widget now renders `New session` in the terminal header while the compact in-panel session rail renders one-line `[shell] session [x]` focus/close tabs even for the active single session, plus a richer filterable session browser once more than one session exists
+      and the widget now renders `New session` in the terminal header while the compact in-panel session rail renders one-line `[shell] session [x]` focus/close tabs only once more than one session exists, plus a richer filterable session browser for grouped sessions
     - grouped-session switching rehydrates the widget snapshot and reconnects the SSE stream against the newly active backend session instead of leaving the UI attached to stale output
     - grouped-session browser actions can now focus or close individual sibling sessions without collapsing the whole terminal widget/panel
     - the shell utility panel now also exposes a backend-owned terminal session navigator over `GET /api/v1/terminal/sessions`:
@@ -126,6 +126,7 @@
       `New session` in the terminal header creates a sibling backend session under the same widget id,
       the compact session rail remains inside the terminal widget as one-line focus/close tabs rather than Dockview chrome,
       and focusing a rail entry switches `active_session_id` back on the backend contract
+    - focused widget coverage now also confirms the compact session rail stays hidden for a single active session and uses tighter, less contrasty chrome when grouped sessions are present
     - the terminal `Explain & fix` control can hand off a real shell failure into the AI sidebar, auto-apply that terminal as the conversation context, and land the operator directly in the local `Plan / Approve` flow
     - that same handoff now reads `issue_summary`, `status_detail`, and `output_excerpt` from the backend diagnostics route instead of assembling the prompt from raw frontend chunk state
     - when no terminal panel is open, the AI `/run ...` path creates a fresh visible workspace terminal and routes the command there instead of failing with a hidden/no-target execution
@@ -275,9 +276,9 @@
 
 - the terminal widget/Dockview boundary now keeps creation inside the widget:
   - the Dockview terminal header no longer exposes an `Add terminal tab` action
-  - the terminal header exposes `New session` as a separate action group, while the in-panel session rail exposes compact one-line `[shell] session [x]` focus/close controls against the active terminal widget
+  - the terminal header exposes `New session` as a separate action group, while the in-panel session rail exposes compact one-line `[shell] session [x]` focus/close controls against the active terminal widget only when the widget has grouped sibling sessions
   - creating a sibling session uses the grouped-session backend contract instead of inserting another Dockview panel in the same group
-  - in-app browser smoke on `http://localhost:5173/` confirmed clicking the header `New session` control increased visible terminal session focus buttons from 3 to 4 while `.dv-tab` stayed at 1 and `Add terminal tab` stayed absent
+  - in-app browser smoke on `http://localhost:5173/` confirmed clicking the header `New session` control increased visible terminal session focus buttons from 3 to 4 while `.dv-tab` stayed at 1 and `Add terminal tab` stayed absent; the follow-up chrome pass confirmed the tighter rail bottom padding, softer tab/badge separators, and muted active-session border after switching, while focused Vitest coverage confirms the rail is omitted when only one session remains
   - this `2026-05-02` boundary pass does not claim a fresh `npm run tauri:dev` desktop smoke; validation was limited to split-browser UI, focused Vitest coverage, TypeScript, and diff checks
 - the terminal Playwright suite now also validates grouped-session runtime behavior:
   - `New session` creates a sibling backend session under the same widget id

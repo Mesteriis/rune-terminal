@@ -802,7 +802,7 @@ export function TerminalWidget({
               )}
             </ClearBox>
           ) : null}
-          {visibleSessionTabs.length > 0 ? (
+          {visibleSessionTabs.length > 1 ? (
             <ClearBox runaComponent="terminal-widget-session-rail" style={terminalWidgetSessionRailStyle}>
               {visibleSessionTabs.map((session, index) => {
                 const sessionLabel = copy.sessionLabel(index + 1)

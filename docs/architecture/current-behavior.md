@@ -146,7 +146,7 @@ It is intentionally operational, not narrative.
   - `Use Active Widget` when the chosen tool schema fits `widget_id`
   - these actions only patch the visible input JSON; execution still requires explicit `Execute`
   - MCP invoke now also has an explicit `Use Normalized MCP Result In AI` action; this inserts bounded MCP context into AI input only on explicit user click
-- New terminal widgets can be created at runtime, while sibling terminal sessions inside an existing widget are created from that widget's header action group and shown as in-panel session rail tabs rather than Dockview-level tabs.
+- New terminal widgets can be created at runtime, while sibling terminal sessions inside an existing widget are created from that widget's header action group and shown as in-panel session rail tabs rather than Dockview-level tabs once the widget has more than one session.
 - Closing a terminal widget tears down its terminal sessions and removes the associated widget from the workspace snapshot.
 - The last remaining tab cannot be closed in the current implementation.
 - Tabs can be renamed inline from the top strip.

@@ -1011,6 +1011,20 @@ describe('TerminalWidget', () => {
     ).toBeNull()
     expect(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Focus terminal session 2 for Main terminal' })).toBeDisabled()
+    const sessionRail = document.querySelector('[id*="terminal-widget-session-rail-"]')
+    const sessionTabs = document.querySelectorAll('[id*="terminal-widget-session-tab-"]')
+    const sessionTab = sessionTabs.item(0)
+    const activeSessionTab = sessionTabs.item(1)
+
+    expect(sessionRail).toHaveStyle({
+      padding: '0 0.78rem 0.3rem',
+    })
+    expect(sessionTab?.getAttribute('style')).toContain(
+      '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 36%, transparent)',
+    )
+    expect(activeSessionTab?.getAttribute('style')).toContain(
+      'border-color: color-mix(in srgb, var(--color-accent-border, var(--color-accent-text)) 44%, transparent)',
+    )
     expect(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).toHaveStyle({
       alignItems: 'center',
       flexDirection: 'row',
@@ -1150,8 +1164,9 @@ describe('TerminalWidget', () => {
     )
 
     expect(
-      screen.getByRole('button', { name: 'Focus terminal session 1 for Workspace shell' }),
-    ).toBeDisabled()
+      screen.queryByRole('button', { name: 'Focus terminal session 1 for Workspace shell' }),
+    ).not.toBeInTheDocument()
+    expect(document.querySelector('[id*="terminal-widget-session-rail-"]')).toBeNull()
     expect(
       screen.queryByRole('button', { name: 'Create another terminal session for Workspace shell' }),
     ).not.toBeInTheDocument()
