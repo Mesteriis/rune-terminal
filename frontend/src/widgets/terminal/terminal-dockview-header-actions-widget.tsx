@@ -1,11 +1,10 @@
 import type * as React from 'react'
 import type { IDockviewHeaderActionsProps } from 'dockview-react'
-import { Plus, X } from 'lucide-react'
+import { X } from 'lucide-react'
 
 import type { AppLocale } from '@/shared/api/runtime'
 import { resolveLocalizedCopy } from '@/features/i18n/model/localized-copy'
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
-import { createTerminalTab } from '@/features/terminal/api/client'
 import { closeWorkspaceWidget, WorkspaceAPIError } from '@/shared/api/workspace'
 import { RunaDomScopeProvider } from '@/shared/ui/dom-id'
 import { IconButton } from '@/shared/ui/components'
@@ -14,8 +13,6 @@ import { resolveFilesPanelParams } from '@/widgets/files'
 import { resolvePreviewPanelParams } from '@/widgets/preview'
 import {
   closeTerminalPanel,
-  createNextTerminalPanelId,
-  createTerminalPanelParams,
   isTerminalPanel,
   resolveTerminalPanelParams,
 } from '@/widgets/terminal/terminal-panel'
@@ -49,45 +46,6 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
   const filesPanelParams = resolveFilesPanelParams(props.activePanel.params)
   const previewPanelParams = resolvePreviewPanelParams(props.activePanel.params)
   const headerActionsWrapStyle = resolveDockviewHeaderActionsWrapStyle(Boolean(terminalPanelParams))
-
-  const handleAddTerminalTab = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-
-    if (!terminalPanelParams) {
-      return
-    }
-
-    const nextPanelId = createNextTerminalPanelId(props.containerApi, terminalPanelParams.preset)
-    const nextPanelParams = createTerminalPanelParams(terminalPanelParams.preset, nextPanelId)
-    const suffixMatch = nextPanelId.match(/-(\d+)$/)
-
-    try {
-      const runtimeTerminal = await createTerminalTab(nextPanelParams.title)
-
-      props.containerApi.addPanel({
-        id: nextPanelId,
-        title: suffixMatch ? `${nextPanelParams.title} ${suffixMatch[1]}` : nextPanelParams.title,
-        component: 'default',
-        tabComponent: 'terminal-tab',
-        params: createTerminalPanelParams(
-          terminalPanelParams.preset,
-          runtimeTerminal.widget_id,
-          runtimeTerminal.tab_id,
-        ),
-        position: {
-          direction: 'within',
-          referencePanel: props.activePanel!.id,
-        },
-      })
-    } catch (error) {
-      console.error('Unable to add terminal tab', error)
-    }
-  }
-
-  const handleAddPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-  }
 
   const handleClosePanel = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -126,18 +84,6 @@ export function TerminalDockviewHeaderActionsWidget(props: IDockviewHeaderAction
     <RunaDomScopeProvider component="terminal-dockview-header-actions-widget" widget={props.activePanel.id}>
       <Box runaComponent="terminal-dockview-header-actions-wrap" style={headerActionsWrapStyle}>
         <Box runaComponent="terminal-dockview-header-actions-group" style={terminalDockviewActionGroupStyle}>
-          {terminalPanelParams ? (
-            <IconButton
-              aria-label={copy.addTerminalTabAria(terminalPanelParams.title)}
-              onClick={handleAddTerminalTab}
-              onPointerDown={handleAddPointerDown}
-              runaComponent="terminal-group-add"
-              size="sm"
-              style={terminalDockviewIconButtonStyle}
-            >
-              <Plus size={14} strokeWidth={1.8} />
-            </IconButton>
-          ) : null}
           <IconButton
             aria-label={copy.closePanelAria(props.activePanel.title ?? props.activePanel.id)}
             onClick={handleClosePanel}

@@ -1,17 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createTerminalTab } from '@/features/terminal/api/client'
 import { closeWorkspaceWidget } from '@/shared/api/workspace'
 import { createFilesPanelParams } from '@/widgets/files'
 import { createPreviewPanelParams } from '@/widgets/preview'
 import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalDockviewHeaderActionsWidget } from '@/widgets/terminal/terminal-dockview-header-actions-widget'
 import * as terminalPanelModule from '@/widgets/terminal/terminal-panel'
-
-vi.mock('@/features/terminal/api/client', () => ({
-  createTerminalTab: vi.fn(),
-}))
 
 vi.mock('@/shared/api/workspace', () => ({
   closeWorkspaceWidget: vi.fn(),
@@ -47,10 +42,12 @@ function createHeaderActionsProps(params = createTerminalPanelParams('workspace'
 }
 
 describe('TerminalDockviewHeaderActionsWidget', () => {
-  it('renders dense add and close controls for a terminal panel', () => {
+  it('renders only the close control for a terminal panel', () => {
     render(<TerminalDockviewHeaderActionsWidget {...(createHeaderActionsProps() as never)} />)
 
-    expect(screen.getByRole('button', { name: 'Add terminal tab for Workspace shell' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Add terminal tab for Workspace shell' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Close Workspace shell' })).toBeInTheDocument()
   })
 
@@ -65,33 +62,6 @@ describe('TerminalDockviewHeaderActionsWidget', () => {
       screen.queryByRole('button', { name: 'Add terminal tab for Workspace shell' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Close Commander' })).toBeInTheDocument()
-  })
-
-  it('creates the next runtime-backed terminal tab when add is pressed', async () => {
-    vi.mocked(createTerminalTab).mockResolvedValue({
-      tab_id: 'tab-9',
-      widget_id: 'term-9',
-      title: 'Workspace shell',
-    })
-
-    const props = createHeaderActionsProps()
-
-    render(<TerminalDockviewHeaderActionsWidget {...(props as never)} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Add terminal tab for Workspace shell' }))
-
-    await waitFor(() => {
-      expect(createTerminalTab).toHaveBeenCalledWith('Workspace shell')
-      expect(props.containerApi.addPanel).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'terminal',
-          params: expect.objectContaining({
-            runtimeTabId: 'tab-9',
-            widgetId: 'term-9',
-          }),
-        }),
-      )
-    })
   })
 
   it('delegates close through closeTerminalPanel', async () => {

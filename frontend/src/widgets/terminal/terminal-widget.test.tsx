@@ -202,7 +202,7 @@ describe('TerminalWidget', () => {
 
     expect(screen.getByText('/Users/avm/projects/Personal/tideterm/runa-terminal')).toBeInTheDocument()
     expect(screen.getByText('Workspace shell')).toBeInTheDocument()
-    expect(screen.getByText('zsh')).toBeInTheDocument()
+    expect(screen.getAllByText('zsh').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Running')).toBeInTheDocument()
     expect(screen.getByTestId('terminal-surface-mock')).toHaveTextContent(
       'Attached to local shell. · font:15 · line:1.4 · theme:contrast · scrollback:7000 · theme-signal:dark · cursor:bar · blink:false',
@@ -1021,6 +1021,121 @@ describe('TerminalWidget', () => {
       expect(createSessionMock).toHaveBeenCalledTimes(1)
       expect(focusSessionMock).toHaveBeenCalledWith('term-main')
       expect(closeSessionMock).toHaveBeenCalledWith('term-main')
+    })
+  })
+
+  it('keeps terminal session tabs inside the widget when Dockview header chrome is preferred', async () => {
+    const createSessionMock = vi.fn(async () => undefined)
+
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      activeSessionId: 'term-side',
+      cwd: '/repo',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      sessions: [
+        {
+          sessionId: 'term-side',
+          shellLabel: 'zsh',
+          connectionKind: 'local',
+          connectionName: 'Local Machine',
+          remoteLaunchMode: null,
+          remoteSessionName: null,
+          sessionState: 'running',
+          statusDetail: null,
+          cwd: '/repo',
+          isActive: true,
+          runtimeState: {
+            widget_id: 'term-side',
+            session_id: 'term-side',
+            shell: '/bin/zsh',
+            status: 'running',
+            pid: 101,
+            started_at: '2026-04-26T12:00:00Z',
+            can_send_input: true,
+            can_interrupt: true,
+            working_dir: '/repo',
+          },
+        },
+      ],
+      canSendInput: true,
+      canInterrupt: true,
+      isCreatingSession: false,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: 'Attached to local shell.',
+      outputChunks: [],
+      runtimeState: {
+        widget_id: 'term-side',
+        session_id: 'term-side',
+        shell: '/bin/zsh',
+        status: 'running',
+        pid: 101,
+        started_at: '2026-04-26T12:00:00Z',
+        can_send_input: true,
+        can_interrupt: true,
+        working_dir: '/repo',
+      },
+      closeSession: vi.fn(),
+      createSession: createSessionMock,
+      focusSession: vi.fn(),
+      interruptSession: vi.fn(),
+      sendInputChunk: vi.fn(),
+      restartSession: vi.fn(),
+    } as ReturnType<typeof useTerminalSession>)
+    vi.mocked(useTerminalPreferences).mockReturnValue({
+      errorMessage: null,
+      decreaseFontSize: vi.fn(),
+      decreaseLineHeight: vi.fn(),
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      increaseFontSize: vi.fn(),
+      increaseLineHeight: vi.fn(),
+      increaseScrollback: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      lineHeight: 1.25,
+      refresh: vi.fn(async () => undefined),
+      resetScrollback: vi.fn(),
+      resetFontSize: vi.fn(),
+      resetLineHeight: vi.fn(),
+      resetCursorBlink: vi.fn(),
+      resetCursorStyle: vi.fn(),
+      resetThemeMode: vi.fn(),
+      scrollback: 5000,
+      themeMode: 'adaptive',
+      decreaseScrollback: vi.fn(),
+      updateCursorBlink: vi.fn(),
+      updateFontSize: vi.fn(),
+      updateLineHeight: vi.fn(),
+      updateCursorStyle: vi.fn(),
+      updateThemeMode: vi.fn(),
+    })
+
+    render(
+      <TerminalWidget
+        hostId="terminal"
+        preferDockviewHeaderChrome
+        runtimeWidgetId="term-side"
+        title="Workspace shell"
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Focus terminal session 1 for Workspace shell' }),
+    ).toBeDisabled()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create another terminal session for Workspace shell' }),
+    )
+
+    await waitFor(() => {
+      expect(createSessionMock).toHaveBeenCalledTimes(1)
     })
   })
 })

@@ -3,7 +3,6 @@ import type { TerminalToolbarCopy } from '@/shared/ui/components/terminal-toolba
 
 export type TerminalWidgetCopy = {
   activeSession: string
-  addTerminalTabAria: (title: string) => string
   aiLinked: string
   browseSessions: string
   browseSessionsAria: (title: string) => string
@@ -68,7 +67,6 @@ export type TerminalWidgetCopy = {
 
 const terminalWidgetCopyEn: TerminalWidgetCopy = {
   activeSession: 'active',
-  addTerminalTabAria: (title) => `Add terminal tab for ${title}`,
   aiLinked: 'AI-linked',
   browseSessions: 'Browse sessions',
   browseSessionsAria: (title) => `Browse grouped terminal sessions for ${title}`,
@@ -155,7 +153,6 @@ const terminalWidgetCopyEn: TerminalWidgetCopy = {
 const terminalWidgetCopyRu: TerminalWidgetCopy = {
   ...terminalWidgetCopyEn,
   activeSession: 'активна',
-  addTerminalTabAria: (title) => `Добавить вкладку терминала для ${title}`,
   aiLinked: 'Связано с AI',
   browseSessions: 'Сессии',
   browseSessionsAria: (title) => `Открыть список сгруппированных сессий терминала для ${title}`,
@@ -241,7 +238,6 @@ const terminalWidgetCopyRu: TerminalWidgetCopy = {
 
 const terminalWidgetCopyEs: TerminalWidgetCopy = {
   activeSession: 'activa',
-  addTerminalTabAria: (title) => `Agregar pestana de terminal para ${title}`,
   aiLinked: 'Vinculado con IA',
   browseSessions: 'Sesiones',
   browseSessionsAria: (title) => `Abrir sesiones agrupadas del terminal para ${title}`,
@@ -328,7 +324,6 @@ const terminalWidgetCopyEs: TerminalWidgetCopy = {
 
 const terminalWidgetCopyZhCN: TerminalWidgetCopy = {
   activeSession: '活动',
-  addTerminalTabAria: (title) => `为 ${title} 添加终端标签页`,
   aiLinked: '已关联 AI',
   browseSessions: '会话',
   browseSessionsAria: (title) => `打开 ${title} 的分组终端会话`,

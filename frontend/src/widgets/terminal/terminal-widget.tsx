@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
 import { useAppTheme } from '@/features/theme/model/theme-provider'
+import type { TerminalSessionListEntry } from '@/features/terminal/model/types'
 import {
   fetchTerminalDiagnostics,
   fetchTerminalLatestCommand,
@@ -66,6 +67,11 @@ export type TerminalWidgetProps = {
   themeClassTarget?: HTMLElement | null
 }
 
+type TerminalSessionTab = Pick<
+  TerminalSessionListEntry,
+  'cwd' | 'isActive' | 'sessionId' | 'sessionState' | 'shellLabel'
+>
+
 export function TerminalWidget({
   hostId,
   preferDockviewHeaderChrome = false,
@@ -97,6 +103,28 @@ export function TerminalWidget({
     title,
   })
   const groupedSessions = terminalSession.sessions ?? []
+  const visibleSessionTabs = useMemo<TerminalSessionTab[]>(() => {
+    if (groupedSessions.length > 0) {
+      return groupedSessions
+    }
+
+    return [
+      {
+        cwd: terminalSession.cwd,
+        isActive: true,
+        sessionId: terminalSession.activeSessionId ?? runtimeWidgetId,
+        sessionState: terminalSession.sessionState,
+        shellLabel: terminalSession.shellLabel,
+      },
+    ]
+  }, [
+    groupedSessions,
+    runtimeWidgetId,
+    terminalSession.activeSessionId,
+    terminalSession.cwd,
+    terminalSession.sessionState,
+    terminalSession.shellLabel,
+  ])
   const latestOutputSeq = terminalSession.outputChunks[terminalSession.outputChunks.length - 1]?.seq ?? 0
   const hasLatestCommandPreview =
     latestCommand !== null || isLatestCommandLoading || latestCommandError != null
@@ -499,27 +527,6 @@ export function TerminalWidget({
                     runaComponent="terminal-widget-header-actions"
                     style={terminalWidgetHeaderActionsStyle}
                   >
-                    <Button
-                      aria-label={copy.createSessionAria(title)}
-                      disabled={isCreateSessionDisabled}
-                      onClick={() => {
-                        void terminalSession.createSession()
-                      }}
-                      runaComponent="terminal-widget-create-session"
-                      style={{
-                        ...terminalWidgetAiActionButtonStyle,
-                        ...(isCreateSessionDisabled
-                          ? {
-                              cursor: 'default',
-                              opacity: 0.58,
-                            }
-                          : null),
-                      }}
-                      title={copy.createSessionTitle}
-                    >
-                      <Plus size={13} strokeWidth={1.8} />
-                      {terminalSession.isCreatingSession ? copy.creatingSession : copy.newSession}
-                    </Button>
                     {canRecoverTerminal ? (
                       <Button
                         aria-label={copy.recoverSessionAria(title)}
@@ -752,9 +759,32 @@ export function TerminalWidget({
               )}
             </ClearBox>
           ) : null}
-          {groupedSessions.length > 1 ? (
+          {visibleSessionTabs.length > 0 ? (
             <ClearBox runaComponent="terminal-widget-session-rail" style={terminalWidgetSessionRailStyle}>
-              {groupedSessions.map((session, index) => (
+              <Button
+                aria-label={copy.createSessionAria(title)}
+                disabled={isCreateSessionDisabled}
+                onClick={() => {
+                  void terminalSession.createSession()
+                }}
+                runaComponent="terminal-widget-create-session"
+                style={{
+                  ...terminalWidgetSessionButtonStyle,
+                  ...(isCreateSessionDisabled
+                    ? {
+                        cursor: 'default',
+                        opacity: 0.58,
+                      }
+                    : null),
+                }}
+                title={copy.createSessionTitle}
+              >
+                <span>
+                  <Plus size={13} strokeWidth={1.8} />
+                  {terminalSession.isCreatingSession ? copy.creatingSession : copy.newSession}
+                </span>
+              </Button>
+              {visibleSessionTabs.map((session, index) => (
                 <Button
                   aria-label={copy.focusSessionAria(index + 1, title)}
                   disabled={session.isActive || terminalSession.isLoading || terminalSession.isRestarting}

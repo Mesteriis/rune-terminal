@@ -41,7 +41,7 @@ Minimal adapter responsibilities:
 - workspace operations
   - inspect tabs/widgets
   - focus/move/rename/pin/close tabs
-  - create terminal tabs
+  - create terminal widgets
 - connection operations
   - list/select/check/save connection profiles
 - policy operations

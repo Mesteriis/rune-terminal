@@ -69,7 +69,7 @@ It is intentionally operational, not narrative.
   - `Hack` for terminal-adjacent fixed-width text
   - Font Awesome assets served from `frontend/public/fontawesome/` for shell and utility icons
 - The widget dock launcher flyout now acts as the searchable shell-level entry surface for:
-  - opening a new terminal tab
+  - opening a new terminal widget
   - returning to the AI panel
   - opening files, runtime, audit, MCP, apps, and settings/help surfaces
   - quickly focusing known widgets in the current workspace
@@ -139,15 +139,15 @@ It is intentionally operational, not narrative.
   - save current layout
   - switch between saved layouts
 - Layout updates do not mutate active tab/widget session identity.
-- New terminal tabs default to the currently selected connection unless a specific connection is supplied at creation time.
+- New terminal widgets default to the currently selected connection unless a specific connection is supplied at creation time.
 - Runtime utilities and audit remain secondary shell surfaces reachable from the dock and the AI-panel overflow menu.
 - Tools panel now renders explicit active-context summary and explicit input helpers:
   - `Use Selected File Path` when the chosen tool schema fits `path`/`paths`
   - `Use Active Widget` when the chosen tool schema fits `widget_id`
   - these actions only patch the visible input JSON; execution still requires explicit `Execute`
   - MCP invoke now also has an explicit `Use Normalized MCP Result In AI` action; this inserts bounded MCP context into AI input only on explicit user click
-- New terminal tabs can be created at runtime.
-- Closing a tab tears down its terminal session and removes the associated widget from the workspace snapshot.
+- New terminal widgets can be created at runtime, while sibling terminal sessions inside an existing widget are created through that widget's in-panel session rail rather than Dockview-level tabs.
+- Closing a terminal widget tears down its terminal sessions and removes the associated widget from the workspace snapshot.
 - The last remaining tab cannot be closed in the current implementation.
 - Tabs can be renamed inline from the top strip.
 - Tabs can be pinned and unpinned from the top strip.
@@ -233,8 +233,8 @@ It is intentionally operational, not narrative.
 - The catalog always includes a built-in `local` connection.
 - Saved SSH profiles are persisted in the runtime state directory and surfaced alongside the built-in local target.
 - A saved connection profile is not the same thing as an active default target.
-- The catalog stores one active connection ID that acts as the default target for new terminal tabs.
-- Selecting an active connection changes the default target for future tabs. It does not migrate already-running sessions.
+- The catalog stores one active connection ID that acts as the default target for new terminal widgets.
+- Selecting an active connection changes the default target for future terminal widgets. It does not migrate already-running sessions.
 - Selecting an active connection does not imply that the target has passed preflight checks or that any remote session is live.
 - Widgets keep their own `connection_id`, so tabs and sessions remain explicitly bound after creation.
 - Connection selection and profile creation are exposed through dedicated management routes and mirrored in the shell connections panel.
