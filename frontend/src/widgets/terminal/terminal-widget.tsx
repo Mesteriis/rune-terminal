@@ -1,4 +1,4 @@
-import { LoaderCircle, Plus, RotateCcw, Sparkles, Square } from 'lucide-react'
+import { LoaderCircle, Plus, RotateCcw, Sparkles, Square, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAppLocale } from '@/features/i18n/model/locale-provider'
@@ -35,6 +35,7 @@ import {
   terminalWidgetCommandStripMetaStyle,
   terminalWidgetCommandStripStyle,
   terminalWidgetCommandValueStyle,
+  terminalWidgetHeaderActionGroupStyle,
   terminalWidgetHeaderActionButtonStyle,
   terminalWidgetHeaderActionsStyle,
   terminalWidgetHeaderRowStyle,
@@ -48,8 +49,12 @@ import {
   terminalWidgetSessionCardStyle,
   terminalWidgetSessionButtonActiveStyle,
   terminalWidgetSessionButtonStyle,
+  terminalWidgetSessionCloseButtonStyle,
+  terminalWidgetSessionLabelStyle,
   terminalWidgetSessionMetaStyle,
   terminalWidgetSessionRailStyle,
+  terminalWidgetSessionShellBadgeStyle,
+  terminalWidgetSessionTabStyle,
   terminalWidgetSurfaceWrapStyle,
   terminalWidgetToolbarRowStyle,
 } from '@/widgets/terminal/terminal-widget.styles'
@@ -409,6 +414,7 @@ export function TerminalWidget({
     terminalSession.isCreatingSession ||
     terminalSession.isInterrupting ||
     terminalSession.isRestarting
+  const isSessionCloseDisabled = visibleSessionTabs.length <= 1 || isSessionMutationDisabled
   useEffect(() => {
     if (!preferDockviewHeaderChrome) {
       clearTerminalDockviewHeaderControls(hostId)
@@ -416,6 +422,15 @@ export function TerminalWidget({
     }
 
     setTerminalDockviewHeaderControls(hostId, {
+      createSession: {
+        ariaLabel: copy.createSessionAria(title),
+        disabled: isCreateSessionDisabled,
+        label: terminalSession.isCreatingSession ? copy.creatingSession : copy.newSession,
+        onClick: () => {
+          void terminalSession.createSession()
+        },
+        title: copy.createSessionTitle,
+      },
       explain: {
         ariaLabel: copy.explainAndFixAria(title),
         disabled: isExplainAndFixDisabled,
@@ -496,6 +511,7 @@ export function TerminalWidget({
     isExplainAndFixDisabled,
     isExplainAndFixPending,
     isInterruptDisabled,
+    isCreateSessionDisabled,
     isRecoverDisabled,
     isRestartDisabled,
     isSearchOpen,
@@ -504,6 +520,7 @@ export function TerminalWidget({
     searchQuery,
     searchResult,
     terminalSession.connectionKind,
+    terminalSession.isCreatingSession,
     terminalSession.isInterrupting,
     terminalSession.isRecoveringStream,
     terminalSession.isRestarting,
@@ -527,6 +544,32 @@ export function TerminalWidget({
                     runaComponent="terminal-widget-header-actions"
                     style={terminalWidgetHeaderActionsStyle}
                   >
+                    <ClearBox
+                      runaComponent="terminal-widget-header-session-actions"
+                      style={terminalWidgetHeaderActionGroupStyle}
+                    >
+                      <Button
+                        aria-label={copy.createSessionAria(title)}
+                        disabled={isCreateSessionDisabled}
+                        onClick={() => {
+                          void terminalSession.createSession()
+                        }}
+                        runaComponent="terminal-widget-create-session"
+                        style={{
+                          ...terminalWidgetAiActionButtonStyle,
+                          ...(isCreateSessionDisabled
+                            ? {
+                                cursor: 'default',
+                                opacity: 0.58,
+                              }
+                            : null),
+                        }}
+                        title={copy.createSessionTitle}
+                      >
+                        <Plus size={13} strokeWidth={1.8} />
+                        {terminalSession.isCreatingSession ? copy.creatingSession : copy.newSession}
+                      </Button>
+                    </ClearBox>
                     {canRecoverTerminal ? (
                       <Button
                         aria-label={copy.recoverSessionAria(title)}
@@ -761,55 +804,66 @@ export function TerminalWidget({
           ) : null}
           {visibleSessionTabs.length > 0 ? (
             <ClearBox runaComponent="terminal-widget-session-rail" style={terminalWidgetSessionRailStyle}>
-              <Button
-                aria-label={copy.createSessionAria(title)}
-                disabled={isCreateSessionDisabled}
-                onClick={() => {
-                  void terminalSession.createSession()
-                }}
-                runaComponent="terminal-widget-create-session"
-                style={{
-                  ...terminalWidgetSessionButtonStyle,
-                  ...(isCreateSessionDisabled
-                    ? {
-                        cursor: 'default',
-                        opacity: 0.58,
-                      }
-                    : null),
-                }}
-                title={copy.createSessionTitle}
-              >
-                <span>
-                  <Plus size={13} strokeWidth={1.8} />
-                  {terminalSession.isCreatingSession ? copy.creatingSession : copy.newSession}
-                </span>
-              </Button>
-              {visibleSessionTabs.map((session, index) => (
-                <Button
-                  aria-label={copy.focusSessionAria(index + 1, title)}
-                  disabled={session.isActive || terminalSession.isLoading || terminalSession.isRestarting}
-                  key={session.sessionId}
-                  onClick={() => {
-                    void terminalSession.focusSession(session.sessionId)
-                  }}
-                  runaComponent="terminal-widget-session-button"
-                  style={{
-                    ...terminalWidgetSessionButtonStyle,
-                    ...(session.isActive ? terminalWidgetSessionButtonActiveStyle : null),
-                    ...(session.isActive || terminalSession.isLoading || terminalSession.isRestarting
-                      ? {
-                          cursor: session.isActive ? 'default' : 'progress',
-                        }
-                      : null),
-                  }}
-                  title={session.cwd}
-                >
-                  <span>{copy.sessionLabel(index + 1)}</span>
-                  <span style={terminalWidgetSessionMetaStyle}>
-                    {session.sessionState === 'running' ? session.shellLabel : session.sessionState}
-                  </span>
-                </Button>
-              ))}
+              {visibleSessionTabs.map((session, index) => {
+                const sessionLabel = copy.sessionLabel(index + 1)
+                const sessionShellLabel =
+                  session.sessionState === 'running' ? session.shellLabel : session.sessionState
+
+                return (
+                  <ClearBox
+                    key={session.sessionId}
+                    runaComponent="terminal-widget-session-tab"
+                    style={{
+                      ...terminalWidgetSessionTabStyle,
+                      ...(session.isActive ? terminalWidgetSessionButtonActiveStyle : null),
+                    }}
+                    title={session.cwd}
+                  >
+                    <Button
+                      aria-label={copy.focusSessionAria(index + 1, title)}
+                      disabled={session.isActive || terminalSession.isLoading || terminalSession.isRestarting}
+                      onClick={() => {
+                        void terminalSession.focusSession(session.sessionId)
+                      }}
+                      runaComponent="terminal-widget-session-button"
+                      style={{
+                        ...terminalWidgetSessionButtonStyle,
+                        ...(session.isActive || terminalSession.isLoading || terminalSession.isRestarting
+                          ? {
+                              cursor: session.isActive ? 'default' : 'progress',
+                            }
+                          : null),
+                      }}
+                    >
+                      <span style={terminalWidgetSessionShellBadgeStyle}>{sessionShellLabel}</span>
+                      <span style={terminalWidgetSessionLabelStyle}>{sessionLabel}</span>
+                    </Button>
+                    {visibleSessionTabs.length > 1 ? (
+                      <IconButton
+                        aria-label={copy.closeSessionTabAria(index + 1, title)}
+                        disabled={isSessionCloseDisabled}
+                        onClick={() => {
+                          void terminalSession.closeSession(session.sessionId)
+                        }}
+                        runaComponent="terminal-widget-session-close"
+                        size="sm"
+                        style={{
+                          ...terminalWidgetSessionCloseButtonStyle,
+                          ...(isSessionCloseDisabled
+                            ? {
+                                cursor: 'default',
+                                opacity: 0.58,
+                              }
+                            : null),
+                        }}
+                        title={copy.closeSession}
+                      >
+                        <X size={12} strokeWidth={2} />
+                      </IconButton>
+                    ) : null}
+                  </ClearBox>
+                )
+              })}
             </ClearBox>
           ) : null}
           {groupedSessions.length > 1 && isSessionBrowserOpen ? (

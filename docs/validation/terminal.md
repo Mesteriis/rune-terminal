@@ -46,7 +46,7 @@
     - `TerminalToolbar` is now wired to the mounted xterm surface for copy, paste, in-terminal search, and live renderer badge updates
     - the toolbar itself now uses denser grouped control sections (`copy/paste` and `search/clear/jump`) plus a right-aligned utility cluster; when search opens, that search flow takes priority and temporarily replaces the renderer badge instead of competing for the same horizontal space
     - the terminal body chrome itself is now tighter: header and toolbar rows use reduced vertical padding, restart/interrupt controls are denser, and the status/meta pills read as lighter shell metadata instead of heavier standalone badges
-    - Dockview-level terminal actions now own panel close only; sibling terminal sessions are created from the `TerminalWidget` session rail inside the panel body instead of from Dockview group chrome:
+    - Dockview-level terminal actions now own panel close only; sibling terminal sessions are created from a separate `TerminalWidget` header action group instead of from Dockview group chrome:
       - terminal group header close actions are wrapped in a compact grouped shell
       - terminal tab close uses the same reduced 24px icon-control density
       - single-tab Dockview right-actions spacing is reduced so the tab/header chrome reads as one compact system
@@ -78,7 +78,7 @@
       `POST /api/v1/terminal/{widgetID}/sessions` creates a sibling session and makes it active,
       `PUT /api/v1/terminal/{widgetID}/sessions/active` switches the active session explicitly,
       `DELETE /api/v1/terminal/{widgetID}/sessions/{sessionID}` closes an individual grouped session while preserving the widget,
-      and the widget now renders a compact in-panel session rail with the create/focus controls even for the active single session, plus a richer filterable session browser once more than one session exists
+      and the widget now renders `New session` in the terminal header while the compact in-panel session rail renders one-line `[shell] session [x]` focus/close tabs even for the active single session, plus a richer filterable session browser once more than one session exists
     - grouped-session switching rehydrates the widget snapshot and reconnects the SSE stream against the newly active backend session instead of leaving the UI attached to stale output
     - grouped-session browser actions can now focus or close individual sibling sessions without collapsing the whole terminal widget/panel
     - the shell utility panel now also exposes a backend-owned terminal session navigator over `GET /api/v1/terminal/sessions`:
@@ -123,8 +123,8 @@
       next/previous controls stay disabled without a query, and those controls
       become enabled when a query is typed into the live search field
     - the same terminal Playwright suite now also verifies grouped-session behavior:
-      `New session` creates a sibling backend session under the same widget id,
-      the compact session rail remains inside the terminal widget rather than Dockview chrome,
+      `New session` in the terminal header creates a sibling backend session under the same widget id,
+      the compact session rail remains inside the terminal widget as one-line focus/close tabs rather than Dockview chrome,
       and focusing a rail entry switches `active_session_id` back on the backend contract
     - the terminal `Explain & fix` control can hand off a real shell failure into the AI sidebar, auto-apply that terminal as the conversation context, and land the operator directly in the local `Plan / Approve` flow
     - that same handoff now reads `issue_summary`, `status_detail`, and `output_excerpt` from the backend diagnostics route instead of assembling the prompt from raw frontend chunk state
@@ -215,6 +215,7 @@
 ## Commands/tests used
 
 - `npm --prefix frontend run lint:active`
+- `npm --prefix frontend run test -- src/widgets/terminal/terminal-widget.test.tsx src/widgets/terminal/terminal-dockview-tab-widget.test.tsx --run`
 - `npm --prefix frontend run test -- src/widgets/terminal/terminal-dockview-header-actions-widget.test.tsx src/widgets/terminal/terminal-widget.test.tsx --run`
 - `(frontend/) ./node_modules/.bin/vitest run src/widgets/terminal/terminal-widget-copy.test.ts --reporter=verbose --testTimeout=10000`
 - `npm --prefix frontend run test -- --reporter verbose src/features/terminal/api/client.test.ts src/features/terminal/model/use-terminal-session.test.tsx`
@@ -274,9 +275,9 @@
 
 - the terminal widget/Dockview boundary now keeps creation inside the widget:
   - the Dockview terminal header no longer exposes an `Add terminal tab` action
-  - the in-panel session rail exposes `New session` / focus controls against the active terminal widget
+  - the terminal header exposes `New session` as a separate action group, while the in-panel session rail exposes compact one-line `[shell] session [x]` focus/close controls against the active terminal widget
   - creating a sibling session uses the grouped-session backend contract instead of inserting another Dockview panel in the same group
-  - in-app browser smoke on `http://localhost:5173/` confirmed clicking the in-panel `New session` control increased visible terminal session focus buttons from 2 to 3 while `.dv-tab` stayed at 1 and `Add terminal tab` stayed absent
+  - in-app browser smoke on `http://localhost:5173/` confirmed clicking the header `New session` control increased visible terminal session focus buttons from 3 to 4 while `.dv-tab` stayed at 1 and `Add terminal tab` stayed absent
   - this `2026-05-02` boundary pass does not claim a fresh `npm run tauri:dev` desktop smoke; validation was limited to split-browser UI, focused Vitest coverage, TypeScript, and diff checks
 - the terminal Playwright suite now also validates grouped-session runtime behavior:
   - `New session` creates a sibling backend session under the same widget id

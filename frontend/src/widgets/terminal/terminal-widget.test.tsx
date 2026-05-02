@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -1004,11 +1004,34 @@ describe('TerminalWidget', () => {
     expect(
       screen.getByRole('button', { name: 'Create another terminal session for Main terminal' }),
     ).toBeVisible()
+    expect(
+      screen
+        .getByRole('button', { name: 'Create another terminal session for Main terminal' })
+        .closest('[data-runa-node="shell-terminal-terminal-widget-session-rail"]'),
+    ).toBeNull()
     expect(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Focus terminal session 2 for Main terminal' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).toHaveStyle({
+      alignItems: 'center',
+      flexDirection: 'row',
+    })
+    expect(
+      within(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).getByText(
+        'zsh',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).getByText(
+        'Session 1',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Close terminal session tab 1 for Main terminal' }),
+    ).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Create another terminal session for Main terminal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close terminal session tab 1 for Main terminal' }))
     fireEvent.click(
       screen.getByRole('button', { name: 'Browse grouped terminal sessions for Main terminal' }),
     )
@@ -1024,7 +1047,7 @@ describe('TerminalWidget', () => {
     })
   })
 
-  it('keeps terminal session tabs inside the widget when Dockview header chrome is preferred', async () => {
+  it('keeps terminal session tabs inside the widget when Dockview header chrome is preferred', () => {
     const createSessionMock = vi.fn(async () => undefined)
 
     vi.mocked(useTerminalSession).mockReturnValue({
@@ -1129,13 +1152,8 @@ describe('TerminalWidget', () => {
     expect(
       screen.getByRole('button', { name: 'Focus terminal session 1 for Workspace shell' }),
     ).toBeDisabled()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Create another terminal session for Workspace shell' }),
-    )
-
-    await waitFor(() => {
-      expect(createSessionMock).toHaveBeenCalledTimes(1)
-    })
+    expect(
+      screen.queryByRole('button', { name: 'Create another terminal session for Workspace shell' }),
+    ).not.toBeInTheDocument()
   })
 })

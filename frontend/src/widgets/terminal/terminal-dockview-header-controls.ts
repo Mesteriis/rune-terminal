@@ -34,6 +34,7 @@ export type TerminalDockviewToolbarControls = {
 }
 
 export type TerminalDockviewHeaderControls = {
+  createSession: TerminalDockviewActionButtonConfig
   explain: TerminalDockviewActionButtonConfig
   interrupt: TerminalDockviewIconActionConfig
   recover: TerminalDockviewActionButtonConfig | null

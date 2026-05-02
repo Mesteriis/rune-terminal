@@ -1,7 +1,12 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { useTerminalSession } from '@/features/terminal/model/use-terminal-session'
+import type { TerminalDockviewHeaderControls } from '@/widgets/terminal/terminal-dockview-header-controls'
+import {
+  clearTerminalDockviewHeaderControls,
+  setTerminalDockviewHeaderControls,
+} from '@/widgets/terminal/terminal-dockview-header-controls'
 import { createTerminalPanelParams } from '@/widgets/terminal/terminal-panel'
 import { TerminalDockviewTabWidget } from '@/widgets/terminal/terminal-dockview-tab-widget'
 
@@ -44,7 +49,56 @@ function createHeaderProps(activePanelId: string, panelCount = 2) {
   }
 }
 
+function createDockviewHeaderControls(createSessionMock = vi.fn()) {
+  return {
+    createSession: {
+      ariaLabel: 'Create another terminal session for Workspace shell',
+      disabled: false,
+      label: 'New session',
+      onClick: createSessionMock,
+      title: 'Create a new backend-owned session inside this terminal widget',
+    },
+    explain: {
+      ariaLabel: 'Explain and fix the latest terminal issue for Workspace shell',
+      disabled: false,
+      onClick: vi.fn(),
+      title: 'Open AI and explain/fix the latest visible terminal issue',
+    },
+    interrupt: {
+      ariaLabel: 'Interrupt terminal for Workspace shell',
+      disabled: false,
+      onClick: vi.fn(),
+      title: 'Interrupt terminal',
+    },
+    recover: null,
+    restart: {
+      ariaLabel: 'Restart terminal for Workspace shell',
+      disabled: false,
+      onClick: vi.fn(),
+      title: 'Restart shell',
+    },
+    toolbar: {
+      isSearchOpen: false,
+      onClear: vi.fn(),
+      onCloseSearch: vi.fn(),
+      onCopy: vi.fn(),
+      onJumpToLatest: vi.fn(),
+      onPaste: vi.fn(),
+      onSearchNext: vi.fn(),
+      onSearchPrevious: vi.fn(),
+      onSearchQueryChange: vi.fn(),
+      onToggleSearch: vi.fn(),
+      searchQuery: '',
+      searchResult: null,
+    },
+  } satisfies TerminalDockviewHeaderControls
+}
+
 describe('TerminalDockviewTabWidget', () => {
+  afterEach(() => {
+    clearTerminalDockviewHeaderControls('panel-1')
+  })
+
   it('renders a shortened compact title with minimal active meta', () => {
     vi.mocked(useTerminalSession).mockReturnValue({
       runtimeWidgetId: 'term-side',
@@ -137,5 +191,46 @@ describe('TerminalDockviewTabWidget', () => {
     expect(
       screen.queryByRole('button', { name: 'Close terminal tab for Workspace shell' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('renders the create-session action in a separate single-tab Dockview header group', () => {
+    const createSessionMock = vi.fn()
+
+    vi.mocked(useTerminalSession).mockReturnValue({
+      runtimeWidgetId: 'term-side',
+      sessionKey: 'term-side:1',
+      cwd: '~/workspace/app',
+      shellLabel: 'zsh',
+      connectionKind: 'local',
+      sessionState: 'running',
+      canSendInput: true,
+      canInterrupt: true,
+      isLoading: false,
+      isInterrupting: false,
+      isRestarting: false,
+      error: null,
+      statusDetail: null,
+      outputChunks: [],
+      runtimeState: null,
+      interruptSession: vi.fn(async () => undefined),
+      restartSession: vi.fn(async () => undefined),
+      sendInputChunk: vi.fn(async () => undefined),
+    } as ReturnType<typeof useTerminalSession>)
+    setTerminalDockviewHeaderControls('panel-1', createDockviewHeaderControls(createSessionMock))
+
+    render(<TerminalDockviewTabWidget {...(createHeaderProps('panel-1', 1) as never)} />)
+
+    const createButton = screen.getByRole('button', {
+      name: 'Create another terminal session for Workspace shell',
+    })
+
+    expect(createButton).toBeVisible()
+    expect(
+      createButton.closest('[data-runa-node="shell-panel-1-terminal-dockview-session-actions"]'),
+    ).not.toBeNull()
+
+    fireEvent.click(createButton)
+
+    expect(createSessionMock).toHaveBeenCalledTimes(1)
   })
 })

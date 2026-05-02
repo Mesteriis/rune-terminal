@@ -9,6 +9,7 @@ export type TerminalWidgetCopy = {
   browseSessionsTitle: string
   closeSession: string
   closeSessionAria: (index: number, title: string) => string
+  closeSessionTabAria: (index: number, title: string) => string
   closePanelAria: (title: string) => string
   closeTerminalTabAria: (title: string) => string
   connectionLocal: string
@@ -73,6 +74,7 @@ const terminalWidgetCopyEn: TerminalWidgetCopy = {
   browseSessionsTitle: 'Inspect, filter, focus, or close grouped sessions in this terminal widget',
   closeSession: 'Close',
   closeSessionAria: (index, title) => `Close terminal session ${index} for ${title}`,
+  closeSessionTabAria: (index, title) => `Close terminal session tab ${index} for ${title}`,
   closePanelAria: (title) => `Close ${title}`,
   closeTerminalTabAria: (title) => `Close terminal tab for ${title}`,
   connectionLocal: 'Local',
@@ -159,6 +161,7 @@ const terminalWidgetCopyRu: TerminalWidgetCopy = {
   browseSessionsTitle: 'Просмотреть, отфильтровать, сфокусировать или закрыть сгруппированные сессии',
   closeSession: 'Закрыть',
   closeSessionAria: (index, title) => `Закрыть сессию терминала ${index} для ${title}`,
+  closeSessionTabAria: (index, title) => `Закрыть вкладку сессии терминала ${index} для ${title}`,
   closePanelAria: (title) => `Закрыть ${title}`,
   closeTerminalTabAria: (title) => `Закрыть вкладку терминала для ${title}`,
   connectionLocal: 'Локально',
@@ -244,6 +247,7 @@ const terminalWidgetCopyEs: TerminalWidgetCopy = {
   browseSessionsTitle: 'Revisar, filtrar, enfocar o cerrar sesiones agrupadas',
   closeSession: 'Cerrar',
   closeSessionAria: (index, title) => `Cerrar la sesión de terminal ${index} para ${title}`,
+  closeSessionTabAria: (index, title) => `Cerrar la pestaña de sesión de terminal ${index} para ${title}`,
   closePanelAria: (title) => `Cerrar ${title}`,
   closeTerminalTabAria: (title) => `Cerrar pestana de terminal para ${title}`,
   connectionLocal: 'Local',
@@ -330,6 +334,7 @@ const terminalWidgetCopyZhCN: TerminalWidgetCopy = {
   browseSessionsTitle: '查看、筛选、聚焦或关闭分组会话',
   closeSession: '关闭',
   closeSessionAria: (index, title) => `关闭 ${title} 的终端会话 ${index}`,
+  closeSessionTabAria: (index, title) => `关闭 ${title} 的终端会话标签 ${index}`,
   closePanelAria: (title) => `关闭 ${title}`,
   closeTerminalTabAria: (title) => `关闭 ${title} 的终端标签页`,
   connectionLocal: '本地',

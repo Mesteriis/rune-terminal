@@ -1,6 +1,6 @@
 import type * as React from 'react'
 import type { IDockviewPanelHeaderProps } from 'dockview-react'
-import { RotateCcw, Sparkles, Square, X } from 'lucide-react'
+import { Plus, RotateCcw, Sparkles, Square, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { resolveLocalizedCopy } from '@/features/i18n/model/localized-copy'
@@ -123,6 +123,30 @@ export function TerminalDockviewTabWidget(props: IDockviewPanelHeaderProps) {
                 runaComponent="terminal-dockview-header-actions"
                 style={terminalDockviewHeaderActionsStyle}
               >
+                <ClearBox
+                  runaComponent="terminal-dockview-session-actions"
+                  style={terminalDockviewActionGroupStyle}
+                >
+                  <Button
+                    aria-label={headerControls.createSession.ariaLabel}
+                    disabled={headerControls.createSession.disabled}
+                    onClick={headerControls.createSession.onClick}
+                    runaComponent="terminal-dockview-create-session"
+                    style={{
+                      ...terminalWidgetAiActionButtonStyle,
+                      ...(headerControls.createSession.disabled
+                        ? {
+                            cursor: 'default',
+                            opacity: 0.58,
+                          }
+                        : null),
+                    }}
+                    title={headerControls.createSession.title}
+                  >
+                    <Plus size={13} strokeWidth={1.8} />
+                    {headerControls.createSession.label}
+                  </Button>
+                </ClearBox>
                 <TerminalToolbar
                   copy={copy.toolbar}
                   isSearchOpen={headerControls.toolbar.isSearchOpen}
