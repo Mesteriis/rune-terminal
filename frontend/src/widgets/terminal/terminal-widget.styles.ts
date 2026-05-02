@@ -208,20 +208,20 @@ export const terminalWidgetSessionTabStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'stretch',
   minHeight: '30px',
-  border:
-    '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 36%, transparent)',
+  border: '1px solid transparent',
   borderRadius: 'var(--radius-sm)',
   background:
-    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 60%, transparent)',
-  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
+    'color-mix(in srgb, var(--color-accent-bg, var(--color-surface-glass-soft)) 34%, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%)',
+  color: 'var(--color-accent-text)',
   overflow: 'hidden',
 }
 
 export const terminalWidgetSessionButtonActiveStyle: React.CSSProperties = {
-  borderColor: 'transparent',
+  borderColor:
+    'color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 36%, transparent)',
   background:
-    'color-mix(in srgb, var(--color-accent-bg, var(--color-surface-glass-soft)) 34%, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%)',
-  color: 'var(--color-accent-text)',
+    'color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 60%, transparent)',
+  color: 'var(--runa-terminal-text-secondary, var(--color-text-secondary))',
 }
 
 export const terminalWidgetSessionLabelStyle: React.CSSProperties = {

@@ -1022,11 +1022,18 @@ describe('TerminalWidget', () => {
     expect(sessionRail).toHaveStyle({
       padding: '0 0.78rem 0.3rem',
     })
+    expect(sessionTab?.getAttribute('style')).toContain('border: 1px solid transparent')
     expect(sessionTab?.getAttribute('style')).toContain(
-      '1px solid color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 36%, transparent)',
+      'background: color-mix(in srgb, var(--color-accent-bg, var(--color-surface-glass-soft)) 34%, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 66%)',
     )
-    expect(activeSessionTab?.getAttribute('style')).toContain('border-color: transparent')
+    expect(activeSessionTab?.getAttribute('style')).toContain(
+      'border-color: color-mix(in srgb, var(--runa-terminal-surface-border, var(--color-border-subtle)) 36%, transparent)',
+    )
+    expect(activeSessionTab?.getAttribute('style')).toContain(
+      'background: color-mix(in srgb, var(--runa-terminal-surface-bg, var(--color-surface-glass-soft)) 60%, transparent)',
+    )
     expect(activeSessionButton.getAttribute('style')).toContain('--runa-ui-focus-ring: transparent')
+    expect(activeSessionButton.getAttribute('style')).toContain('opacity: 1')
     expect(screen.getByRole('button', { name: 'Focus terminal session 1 for Main terminal' })).toHaveStyle({
       alignItems: 'center',
       flexDirection: 'row',

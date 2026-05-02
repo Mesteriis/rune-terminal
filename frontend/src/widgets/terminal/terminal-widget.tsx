@@ -831,6 +831,7 @@ export function TerminalWidget({
                         ...(session.isActive || terminalSession.isLoading || terminalSession.isRestarting
                           ? {
                               cursor: session.isActive ? 'default' : 'progress',
+                              ...(session.isActive ? { opacity: 1 } : null),
                             }
                           : null),
                       }}
